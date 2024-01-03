@@ -1,0 +1,29 @@
+name: Multi-sig wallet
+
+plugins:
+  - name: solidity
+    version: 0.7.0
+  - name: etherscan
+    version: 0.7.0
+  - name: alchemy
+    version: 0.7.0
+  - name: hardhat
+    version: 0.7.0
+
+dependencies:
+  - name: OpenZeppelin
+    github: OpenZeppelin/openzeppelin-contracts
+    version: 4.9.5
+
+solidity:
+  import_remapping:
+    - "@openzeppelin=OpenZeppelin/v4.9.5"
+
+hardhat:
+  host: auto
+
+test:
+  coverage:
+    reports:
+      terminal:
+        verbose: true
