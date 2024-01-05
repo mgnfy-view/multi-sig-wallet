@@ -4,6 +4,7 @@
     "editor.insertSpaces": true,
     "editor.wordWrap": "on",
     "editor.minimap.enabled": false,
+    "editor.formatOnPaste": false,
     "[jsonc]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
