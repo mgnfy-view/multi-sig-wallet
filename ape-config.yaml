@@ -20,10 +20,10 @@ solidity:
     - "@openzeppelin=OpenZeppelin/v4.9.5"
 
 hardhat:
-  host: auto
+  host: 127.0.0.1:8545
 
 test:
   coverage:
     reports:
-      terminal:
-        verbose: true
+      terminal: True
+      html: True
