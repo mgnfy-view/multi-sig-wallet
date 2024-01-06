@@ -1,5 +1,11 @@
+# Node modules
 node_modules
+
+# Python, yaml files and solidity contracts
 *.py
 *.yaml
 *.sol
+
+# Markdown files and any file starting with .
+*.md
 .*

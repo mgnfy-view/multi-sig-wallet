@@ -9,9 +9,13 @@
 .python-version
 __pycache__
 
-# node modules
+# Node modules
 node_modules
 
 # Hardhat files
 cache
 artifacts
+
+# Coverage reports
+.coverage
+coverage.json
