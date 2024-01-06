@@ -1,4 +1,4 @@
-name: Lint and test
+name: Upload coverage to Codecov
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  lint_and_test:
+  upload_coverage:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -36,20 +36,17 @@ jobs:
           npm ci
           pip install -r requirements.txt
 
-      - name: Lint contracts
-        run: npx solhint contracts/src/*.sol
+      - name: Generate coverage report
+        run: |
+          coverage run -m pytest --network ::hardhat
+          coverage json
 
-      - name: Lint scripts
-        run: pylint scripts/*.py
-
-      - name: Lint test files
-        run: pylint --load-plugins pylint_pytest tests/*.py
-
-      - name: Run tests
-        run: ape test --network ::hardhat
-
-        
-        
-
-
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.json
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true
 
