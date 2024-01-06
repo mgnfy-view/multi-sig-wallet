@@ -4,7 +4,7 @@ annotated-types==0.6.0
 ape-alchemy==0.7.0
 ape-etherscan==0.7.0
 ape-hardhat==0.7.0
-ape-solidity==0.7.0
+ape-solidity==0.7.1
 astroid==3.0.2
 asttokens==2.4.1
 async-timeout==4.0.3
@@ -19,7 +19,6 @@ charset-normalizer==3.3.2
 chompjs==1.2.2
 click==8.1.7
 commonmark==0.9.1
-coverage==7.4.0
 cryptography==41.0.7
 cytoolz==0.12.2
 dataclassy==0.11.1
@@ -29,7 +28,7 @@ dill==0.3.7
 eip712==0.2.3
 eth-abi==4.2.1
 eth-account==0.10.0
-eth-ape==0.7.1
+eth-ape==0.7.4
 eth-bloom==3.0.0
 eth-hash==0.5.2
 eth-keyfile==0.7.0
@@ -39,7 +38,7 @@ eth-rlp==1.0.0
 eth-tester==0.9.1b1
 eth-typing==3.5.2
 eth-utils==2.3.1
-ethpm-types==0.6.6
+ethpm-types==0.6.7
 evm-trace==0.1.2
 exceptiongroup==1.2.0
 executing==2.0.1

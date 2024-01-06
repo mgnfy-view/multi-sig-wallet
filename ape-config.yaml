@@ -2,7 +2,7 @@ name: Multi-sig wallet
 
 plugins:
   - name: solidity
-    version: 0.7.0
+    version: 0.7.1
   - name: etherscan
     version: 0.7.0
   - name: alchemy
@@ -20,10 +20,9 @@ solidity:
     - "@openzeppelin=OpenZeppelin/v4.9.5"
 
 hardhat:
-  host: 127.0.0.1:8545
+  host: https://127.0.0.1:8545
 
 test:
   coverage:
     reports:
       terminal: True
-      html: True
