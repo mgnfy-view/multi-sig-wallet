@@ -20,7 +20,7 @@ solidity:
     - "@openzeppelin=OpenZeppelin/v4.9.5"
 
 hardhat:
-  host: https://127.0.0.1:8545
+  host: 127.0.0.1:8545
 
 test:
   coverage:
