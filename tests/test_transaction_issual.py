@@ -50,6 +50,6 @@ def test_transaction_issual_reverts_if_not_sent_by_owner(
     wallet,
     issue_eth_transaction_request,
 ):
-    with ape.reverts(wallet.NotOneOfTheOwners):
+    with ape.reverts(wallet.MultiSigWallet__NotOneOfTheOwners):
         args = [0, 0, not_owner, "1 ether"]
         issue_eth_transaction_request(args, not_owner)

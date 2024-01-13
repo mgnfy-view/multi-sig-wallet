@@ -55,31 +55,31 @@ contract MultiSigWallet {
         TransactionActions indexed transactionAction
     );
 
-    error NotOneOfTheOwners();
-    error InvalidRequiredApprovals();
-    error InvalidTransactionRequest();
-    error InvalidTransactionIndex();
-    error TransactionAlreadyApprovedByOwner();
-    error NotEnoughApprovalsGiven();
-    error TransactionAlreadyExecuted();
-    error NotEnoughEtH(uint256 balance);
-    error TransactionFailed();
-    error InvalidIndex();
+    error MultiSigWallet__NotOneOfTheOwners();
+    error MultiSigWallet__InvalidRequiredApprovals();
+    error MultiSigWallet__InvalidTransactionRequest();
+    error MultiSigWallet__InvalidTransactionIndex();
+    error MultiSigWallet__TransactionAlreadyApprovedByOwner();
+    error MultiSigWallet__NotEnoughApprovalsGiven();
+    error MultiSigWallet__TransactionAlreadyExecuted();
+    error MultiSigWallet__NotEnoughEtH(uint256 balance);
+    error MultiSigWallet__TransactionFailed();
+    error MultiSigWallet__InvalidIndex();
 
     modifier onlyOwner() {
-        if (!isOwner[msg.sender]) revert NotOneOfTheOwners();
+        if (!isOwner[msg.sender]) revert MultiSigWallet__NotOneOfTheOwners();
         _;
     }
 
     modifier onlyValidtransactionIndex(uint256 _transactionIndex) {
         if (_transactionIndex < 0 || _transactionIndex > transactionCount)
-            revert InvalidTransactionIndex();
+            revert MultiSigWallet__InvalidTransactionIndex();
         _;
     }
 
     constructor(address[] memory _owners, uint256 _requiredApprovals) {
         if (_requiredApprovals < 0 || _requiredApprovals > _owners.length)
-            revert InvalidRequiredApprovals();
+            revert MultiSigWallet__InvalidRequiredApprovals();
 
         for (uint32 count = 0; count < _owners.length; count++) {
             owners.push(_owners[count]);
@@ -101,7 +101,7 @@ contract MultiSigWallet {
         if (
             _transactionType == TransactionTypes.ETH &&
             _action != TransactionActions.Transfer
-        ) revert InvalidTransactionRequest();
+        ) revert MultiSigWallet__InvalidTransactionRequest();
 
         Transaction memory newTransaction = Transaction({
             transactionType: _transactionType,
@@ -124,7 +124,7 @@ contract MultiSigWallet {
         uint256 _transactionIndex
     ) public onlyOwner onlyValidtransactionIndex(_transactionIndex) {
         if (transactionApproval[_transactionIndex][msg.sender])
-            revert TransactionAlreadyApprovedByOwner();
+            revert MultiSigWallet__TransactionAlreadyApprovedByOwner();
 
         transactionApproval[_transactionIndex][msg.sender] = true;
         transactions[_transactionIndex].approvalsGiven++;
@@ -136,9 +136,9 @@ contract MultiSigWallet {
         uint256 _transactionIndex
     ) public onlyOwner onlyValidtransactionIndex(_transactionIndex) {
         if (transactions[_transactionIndex].approvalsGiven < requiredApprovals)
-            revert NotEnoughApprovalsGiven();
+            revert MultiSigWallet__NotEnoughApprovalsGiven();
         if (transactions[_transactionIndex].executed)
-            revert TransactionAlreadyExecuted();
+            revert MultiSigWallet__TransactionAlreadyExecuted();
 
         if (
             transactions[_transactionIndex].transactionType ==
@@ -147,12 +147,12 @@ contract MultiSigWallet {
             if (
                 address(this).balance <
                 transactions[_transactionIndex].amountOrTokenId
-            ) revert NotEnoughEtH(address(this).balance);
+            ) revert MultiSigWallet__NotEnoughEtH(address(this).balance);
 
             (bool success, ) = transactions[_transactionIndex].to.call{
                 value: transactions[_transactionIndex].amountOrTokenId
             }("");
-            if (!success) revert TransactionFailed();
+            if (!success) revert MultiSigWallet__TransactionFailed();
             transactions[_transactionIndex].executed = true;
 
             emit TransactionExecuted(
@@ -164,7 +164,8 @@ contract MultiSigWallet {
     }
 
     function getOwner(uint256 _index) public view returns (address) {
-        if (_index < 0 || _index > owners.length - 1) revert InvalidIndex();
+        if (_index < 0 || _index > owners.length - 1)
+            revert MultiSigWallet__InvalidIndex();
         return owners[_index];
     }
 
