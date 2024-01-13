@@ -48,7 +48,10 @@ contract MultiSigWallet {
         uint256 indexed transactionIndex,
         address indexed owner
     );
-    event TransactionApproved(uint256 transactionIndex, address indexed owner);
+    event TransactionApproved(
+        uint256 indexed transactionIndex,
+        address indexed owner
+    );
     event TransactionExecuted(
         uint256 transactionIndex,
         TransactionTypes indexed transactionType,
@@ -72,13 +75,13 @@ contract MultiSigWallet {
     }
 
     modifier onlyValidtransactionIndex(uint256 _transactionIndex) {
-        if (_transactionIndex < 0 || _transactionIndex > transactionCount)
+        if (_transactionIndex > transactionCount)
             revert MultiSigWallet__InvalidTransactionIndex();
         _;
     }
 
     constructor(address[] memory _owners, uint256 _requiredApprovals) {
-        if (_requiredApprovals < 0 || _requiredApprovals > _owners.length)
+        if (_requiredApprovals > _owners.length)
             revert MultiSigWallet__InvalidRequiredApprovals();
 
         for (uint32 count = 0; count < _owners.length; count++) {
@@ -164,8 +167,7 @@ contract MultiSigWallet {
     }
 
     function getOwner(uint256 _index) public view returns (address) {
-        if (_index < 0 || _index > owners.length - 1)
-            revert MultiSigWallet__InvalidIndex();
+        if (_index > owners.length - 1) revert MultiSigWallet__InvalidIndex();
         return owners[_index];
     }
 
