@@ -5,5 +5,20 @@
     "editor.wordWrap": "on",
     "editor.minimap.enabled": false,
     "editor.formatOnPaste": false,
-    "python.terminal.activateEnvInCurrentTerminal": true
+    "editor.formatOnSave": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "[jsonc]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+        "editor.maxTokenizationLineLength": 2500,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[python]": {
+        "diffEditor.ignoreTrimWhitespace": false,
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "[solidity]": {
+        "editor.defaultFormatter": "NomicFoundation.hardhat-solidity"
+    },
 }
