@@ -9,6 +9,8 @@ plugins:
     version: 0.7.0
   - name: hardhat
     version: 0.7.0
+  - name: foundry
+    version: 0.7.0
 
 dependencies:
   - name: OpenZeppelin
