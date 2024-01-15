@@ -46,7 +46,7 @@ jobs:
         run: pylint --load-plugins pylint_pytest tests/*.py
 
       - name: Run tests
-        run: ape test --network ::foundry
+        run: ape test --network ::hardhat
 
         
         
