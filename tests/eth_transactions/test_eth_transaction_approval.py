@@ -2,17 +2,11 @@ import pytest
 import ape
 
 
-@pytest.fixture
-def issue_eth_transaction_request(wallet):
-    return lambda args, account: wallet.issueTransactionRequest(*args, sender=account)
-
-
 @pytest.mark.transaction_approval
 def test_only_owners_can_approve_transactions(
-    owners, not_owner, wallet, issue_eth_transaction_request
+    owners, not_owner, wallet, issue_eth_transfer_transaction_request
 ):
-    args = [0, 0, not_owner, "1 ether"]
-    issue_eth_transaction_request(args, owners[0])
+    issue_eth_transfer_transaction_request(owners[0])
 
     with ape.reverts(wallet.MultiSigWallet__NotOneOfTheOwners):
         wallet.approveTransaction(0, sender=not_owner)
@@ -20,10 +14,9 @@ def test_only_owners_can_approve_transactions(
 
 @pytest.mark.transaction_approval
 def test_transaction_approval_by_owners_increases_approval_count(
-    not_owner, owners, wallet, issue_eth_transaction_request
+    owners, wallet, issue_eth_transfer_transaction_request
 ):
-    args = [0, 0, not_owner, "1 ether"]
-    issue_eth_transaction_request(args, owners[0])
+    issue_eth_transfer_transaction_request(owners[0])
 
     wallet.approveTransaction(0, sender=owners[0])
 
@@ -32,10 +25,9 @@ def test_transaction_approval_by_owners_increases_approval_count(
 
 @pytest.mark.transaction_approval
 def test_owner_can_approve_a_transaction_only_once(
-    not_owner, owners, wallet, issue_eth_transaction_request
+    owners, wallet, issue_eth_transfer_transaction_request
 ):
-    args = [0, 0, not_owner, "1 ether"]
-    issue_eth_transaction_request(args, owners[0])
+    issue_eth_transfer_transaction_request(owners[0])
 
     wallet.approveTransaction(0, sender=owners[0])
 
@@ -45,10 +37,9 @@ def test_owner_can_approve_a_transaction_only_once(
 
 @pytest.mark.transaction_approval
 def test_transaction_approval_emits_transaction_approved_event(
-    not_owner, owners, wallet, issue_eth_transaction_request
+    owners, wallet, issue_eth_transfer_transaction_request
 ):
-    args = [0, 0, not_owner, "1 ether"]
-    issue_eth_transaction_request(args, owners[0])
+    issue_eth_transfer_transaction_request(owners[0])
     transaction_receipt = wallet.approveTransaction(0, sender=owners[0])
 
     expected_event_values = [0, owners[0]]
