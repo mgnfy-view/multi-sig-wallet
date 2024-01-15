@@ -6,6 +6,5 @@ node_modules
 *.yaml
 *.sol
 
-# Markdown files and any file starting with .
+# Markdown files
 *.md
-.*
