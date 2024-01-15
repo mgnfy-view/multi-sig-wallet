@@ -11,6 +11,8 @@
 
 pragma solidity ^0.8.20;
 
+import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
+
 contract MultiSigWallet {
     enum TransactionTypes {
         ETH,
@@ -19,11 +21,9 @@ contract MultiSigWallet {
     }
 
     enum TransactionActions {
-        // for ETH, token and NFT transactions
         Transfer,
-        // for tokens and NFTs
+        TransferFrom,
         Approve,
-        // for tokens and NFTs
         Burn
     }
 
@@ -35,6 +35,8 @@ contract MultiSigWallet {
         uint256 amountOrTokenId;
         uint256 approvalsGiven;
         bool executed;
+        address tokenContract;
+        address allowanceOwner;
     }
 
     address[] private owners;
@@ -53,9 +55,8 @@ contract MultiSigWallet {
         address indexed owner
     );
     event TransactionExecuted(
-        uint256 transactionIndex,
-        TransactionTypes indexed transactionType,
-        TransactionActions indexed transactionAction
+        uint256 indexed transactionIndex,
+        address indexed owner
     );
 
     error MultiSigWallet__NotOneOfTheOwners();
@@ -68,6 +69,7 @@ contract MultiSigWallet {
     error MultiSigWallet__NotEnoughEtH(uint256 balance);
     error MultiSigWallet__TransactionFailed();
     error MultiSigWallet__InvalidIndex();
+    error MultiSigWallet__NotEnoughTokens(uint256 tokenBalance);
 
     modifier onlyOwner() {
         if (!isOwner[msg.sender]) revert MultiSigWallet__NotOneOfTheOwners();
@@ -95,25 +97,45 @@ contract MultiSigWallet {
 
     receive() external payable {}
 
-    function issueTransactionRequest(
-        TransactionTypes _transactionType,
-        TransactionActions _action,
+    function issueETHTransferTransactionRequest(
         address _to,
         uint256 _amount
     ) public onlyOwner {
-        if (
-            _transactionType == TransactionTypes.ETH &&
-            _action != TransactionActions.Transfer
-        ) revert MultiSigWallet__InvalidTransactionRequest();
-
         Transaction memory newTransaction = Transaction({
-            transactionType: _transactionType,
-            action: _action,
+            transactionType: TransactionTypes.ETH,
+            action: TransactionActions.Transfer,
             issuer: msg.sender,
             to: _to,
             amountOrTokenId: _amount,
             approvalsGiven: 0,
-            executed: false
+            executed: false,
+            tokenContract: address(0),
+            allowanceOwner: address(0)
+        });
+
+        transactions.push(newTransaction);
+
+        emit TransactionIssued(transactionCount, msg.sender);
+
+        transactionCount++;
+    }
+
+    function issueTokenTransferTransactionRequest(
+        address _tokenContract,
+        TransactionActions _transactionAction,
+        address _to,
+        uint256 _amount
+    ) public onlyOwner {
+        Transaction memory newTransaction = Transaction({
+            transactionType: TransactionTypes.Token,
+            action: _transactionAction,
+            issuer: msg.sender,
+            to: _to,
+            amountOrTokenId: _amount,
+            approvalsGiven: 0,
+            executed: false,
+            tokenContract: _tokenContract,
+            allowanceOwner: address(0)
         });
 
         transactions.push(newTransaction);
@@ -146,24 +168,13 @@ contract MultiSigWallet {
         if (
             transactions[_transactionIndex].transactionType ==
             TransactionTypes.ETH
-        ) {
-            if (
-                address(this).balance <
-                transactions[_transactionIndex].amountOrTokenId
-            ) revert MultiSigWallet__NotEnoughEtH(address(this).balance);
+        ) executeETHTransaction(_transactionIndex);
+        else if (
+            transactions[_transactionIndex].transactionType ==
+            TransactionTypes.Token
+        ) executeTokenTransaction(_transactionIndex);
 
-            (bool success, ) = transactions[_transactionIndex].to.call{
-                value: transactions[_transactionIndex].amountOrTokenId
-            }("");
-            if (!success) revert MultiSigWallet__TransactionFailed();
-            transactions[_transactionIndex].executed = true;
-
-            emit TransactionExecuted(
-                _transactionIndex,
-                transactions[_transactionIndex].transactionType,
-                transactions[_transactionIndex].action
-            );
-        }
+        emit TransactionExecuted(_transactionIndex, msg.sender);
     }
 
     function getOwner(uint256 _index) public view returns (address) {
@@ -203,5 +214,39 @@ contract MultiSigWallet {
         uint256 _transactionIndex
     ) public view onlyValidtransactionIndex(_transactionIndex) returns (bool) {
         return transactionApproval[_transactionIndex][_owner];
+    }
+
+    function executeETHTransaction(uint256 _transactionIndex) private {
+        if (
+            address(this).balance <
+            transactions[_transactionIndex].amountOrTokenId
+        ) revert MultiSigWallet__NotEnoughEtH(address(this).balance);
+
+        (bool success, ) = transactions[_transactionIndex].to.call{
+            value: transactions[_transactionIndex].amountOrTokenId
+        }("");
+        if (!success) revert MultiSigWallet__TransactionFailed();
+        transactions[_transactionIndex].executed = true;
+    }
+
+    function executeTokenTransaction(uint256 _transactionIndex) private {
+        address tokenContract = transactions[_transactionIndex].tokenContract;
+
+        if (
+            transactions[_transactionIndex].action ==
+            TransactionActions.Transfer
+        ) {
+            uint256 tokenBalance = IERC20(tokenContract).balanceOf(
+                address(this)
+            );
+
+            if (tokenBalance < transactions[_transactionIndex].amountOrTokenId)
+                revert MultiSigWallet__NotEnoughTokens(tokenBalance);
+
+            IERC20(tokenContract).transfer(
+                transactions[_transactionIndex].to,
+                transactions[_transactionIndex].amountOrTokenId
+            );
+        }
     }
 }
