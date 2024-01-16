@@ -11,7 +11,7 @@
 
 pragma solidity ^0.8.20;
 
-import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract MultiSigWallet {
     enum TransactionTypes {
@@ -23,8 +23,7 @@ contract MultiSigWallet {
     enum TransactionActions {
         Transfer,
         TransferFrom,
-        Approve,
-        Burn
+        Approve
     }
 
     struct Transaction {
@@ -61,7 +60,6 @@ contract MultiSigWallet {
 
     error MultiSigWallet__NotOneOfTheOwners();
     error MultiSigWallet__InvalidRequiredApprovals();
-    error MultiSigWallet__InvalidTransactionRequest();
     error MultiSigWallet__InvalidTransactionIndex();
     error MultiSigWallet__TransactionAlreadyApprovedByOwner();
     error MultiSigWallet__NotEnoughApprovalsGiven();
@@ -70,6 +68,7 @@ contract MultiSigWallet {
     error MultiSigWallet__TransactionFailed();
     error MultiSigWallet__InvalidIndex();
     error MultiSigWallet__NotEnoughTokens(uint256 tokenBalance);
+    error MultiSigWallet__NotEnoughAllowance(uint256 allowance);
 
     modifier onlyOwner() {
         if (!isOwner[msg.sender]) revert MultiSigWallet__NotOneOfTheOwners();
@@ -97,52 +96,68 @@ contract MultiSigWallet {
 
     receive() external payable {}
 
-    function issueETHTransferTransactionRequest(
+    function issueETHTransferRequest(
         address _to,
         uint256 _amount
     ) public onlyOwner {
-        Transaction memory newTransaction = Transaction({
-            transactionType: TransactionTypes.ETH,
-            action: TransactionActions.Transfer,
-            issuer: msg.sender,
-            to: _to,
-            amountOrTokenId: _amount,
-            approvalsGiven: 0,
-            executed: false,
-            tokenContract: address(0),
-            allowanceOwner: address(0)
-        });
-
-        transactions.push(newTransaction);
-
-        emit TransactionIssued(transactionCount, msg.sender);
-
-        transactionCount++;
+        issueTransactionHelper(
+            TransactionTypes.ETH,
+            TransactionActions.Transfer,
+            msg.sender,
+            _to,
+            _amount,
+            address(0),
+            address(0)
+        );
     }
 
-    function issueTokenTransferTransactionRequest(
-        address _tokenContract,
-        TransactionActions _transactionAction,
+    function issueTokenTransferRequest(
         address _to,
-        uint256 _amount
+        uint256 _amount,
+        address _tokenContract
     ) public onlyOwner {
-        Transaction memory newTransaction = Transaction({
-            transactionType: TransactionTypes.Token,
-            action: _transactionAction,
-            issuer: msg.sender,
-            to: _to,
-            amountOrTokenId: _amount,
-            approvalsGiven: 0,
-            executed: false,
-            tokenContract: _tokenContract,
-            allowanceOwner: address(0)
-        });
+        issueTransactionHelper(
+            TransactionTypes.Token,
+            TransactionActions.Transfer,
+            msg.sender,
+            _to,
+            _amount,
+            _tokenContract,
+            address(0)
+        );
+    }
 
-        transactions.push(newTransaction);
+    function issueTokenTransferFromRequest(
+        address _from,
+        address _to,
+        uint256 _amount,
+        address _tokenContract
+    ) public onlyOwner {
+        issueTransactionHelper(
+            TransactionTypes.Token,
+            TransactionActions.TransferFrom,
+            msg.sender,
+            _to,
+            _amount,
+            _tokenContract,
+            _from
+        );
+    }
 
-        emit TransactionIssued(transactionCount, msg.sender);
-
-        transactionCount++;
+    function issueTokenApprovalRequest(
+        address _to,
+        uint256 _amount,
+        address _tokenContract
+    ) public onlyOwner {
+        issueTransactionHelper(
+            TransactionTypes.Token,
+            TransactionActions.Approve,
+            msg.sender,
+            _to,
+            _amount,
+            _tokenContract,
+            address(0)
+        );
     }
 
     function approveTransaction(
@@ -168,12 +183,13 @@ contract MultiSigWallet {
         if (
             transactions[_transactionIndex].transactionType ==
             TransactionTypes.ETH
-        ) executeETHTransaction(_transactionIndex);
+        ) executeETHTransferTransaction(_transactionIndex);
         else if (
             transactions[_transactionIndex].transactionType ==
             TransactionTypes.Token
         ) executeTokenTransaction(_transactionIndex);
 
+        transactions[_transactionIndex].executed = true;
         emit TransactionExecuted(_transactionIndex, msg.sender);
     }
 
@@ -216,7 +232,33 @@ contract MultiSigWallet {
         return transactionApproval[_transactionIndex][_owner];
     }
 
-    function executeETHTransaction(uint256 _transactionIndex) private {
+    function issueTransactionHelper(
+        TransactionTypes _transactionType,
+        TransactionActions _transactionAction,
+        address _issuer,
+        address _to,
+        uint256 _amountOrTokenId,
+        address _tokenContract,
+        address _allowanceOwner
+    ) private {
+        Transaction memory newTransaction = Transaction({
+            transactionType: _transactionType,
+            action: _transactionAction,
+            issuer: _issuer,
+            to: _to,
+            amountOrTokenId: _amountOrTokenId,
+            approvalsGiven: 0,
+            executed: false,
+            tokenContract: _tokenContract,
+            allowanceOwner: _allowanceOwner
+        });
+
+        transactions.push(newTransaction);
+        emit TransactionIssued(transactionCount, msg.sender);
+        transactionCount++;
+    }
+
+    function executeETHTransferTransaction(uint256 _transactionIndex) private {
         if (
             address(this).balance <
             transactions[_transactionIndex].amountOrTokenId
@@ -226,7 +268,6 @@ contract MultiSigWallet {
             value: transactions[_transactionIndex].amountOrTokenId
         }("");
         if (!success) revert MultiSigWallet__TransactionFailed();
-        transactions[_transactionIndex].executed = true;
     }
 
     function executeTokenTransaction(uint256 _transactionIndex) private {
@@ -244,6 +285,39 @@ contract MultiSigWallet {
                 revert MultiSigWallet__NotEnoughTokens(tokenBalance);
 
             IERC20(tokenContract).transfer(
+                transactions[_transactionIndex].to,
+                transactions[_transactionIndex].amountOrTokenId
+            );
+        } else if (
+            transactions[_transactionIndex].action ==
+            TransactionActions.TransferFrom
+        ) {
+            uint256 allowance = IERC20(tokenContract).allowance(
+                transactions[_transactionIndex].allowanceOwner,
+                address(this)
+            );
+            if (allowance < transactions[_transactionIndex].amountOrTokenId)
+                revert MultiSigWallet__NotEnoughAllowance(allowance);
+
+            IERC20(tokenContract).transferFrom(
+                transactions[_transactionIndex].allowanceOwner,
+                transactions[_transactionIndex].to,
+                transactions[_transactionIndex].amountOrTokenId
+            );
+        } else if (
+            transactions[_transactionIndex].action == TransactionActions.Approve
+        ) {
+            uint256 tokenBalance = IERC20(tokenContract).balanceOf(
+                address(this)
+            );
+            if (tokenBalance < transactions[_transactionIndex].amountOrTokenId)
+                revert MultiSigWallet__NotEnoughTokens(tokenBalance);
+
+            IERC20(tokenContract).approve(
+                transactions[_transactionIndex].to,
+                0
+            );
+            IERC20(tokenContract).approve(
                 transactions[_transactionIndex].to,
                 transactions[_transactionIndex].amountOrTokenId
             );
