@@ -37,16 +37,16 @@ jobs:
           pip install -r requirements.txt
 
       - name: Lint contracts
-        run: npx solhint contracts/src/*.sol
+        run: npm run lint-sol
 
       - name: Lint scripts
-        run: pylint scripts/*.py
+        run: npm run lint-py-scripts
 
       - name: Lint test files
-        run: pylint --load-plugins pylint_pytest tests/*.py
+        run: npm run lint-py-tests
 
       - name: Run tests
-        run: ape test --network ::hardhat
+        run: npm run test-h
 
         
         
