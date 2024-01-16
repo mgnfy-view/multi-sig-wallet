@@ -4,9 +4,9 @@ import ape
 
 @pytest.mark.transaction_issual
 def test_issue_eth_transfer_transaction_request(
-    owners, not_owner, wallet, issue_eth_transfer_transaction_request, web3
+    owners, not_owner, wallet, issue_eth_transfer_request, web3
 ):
-    issue_eth_transfer_transaction_request(owners[0])
+    issue_eth_transfer_request(owners[0])
     transaction_details = wallet.getTransactionDetails(0)
 
     expected_result = [
@@ -28,9 +28,9 @@ def test_issue_eth_transfer_transaction_request(
 
 @pytest.mark.transaction_issual
 def test_eth_transfer_transaction_issual_emits_event(
-    owners, wallet, issue_eth_transfer_transaction_request
+    owners, wallet, issue_eth_transfer_request
 ):
-    transaction_receipt = issue_eth_transfer_transaction_request(owners[0])
+    transaction_receipt = issue_eth_transfer_request(owners[0])
 
     logs = list(transaction_receipt.decode_logs(wallet.TransactionIssued))
     expected_event_values = [0, owners[0]]
@@ -40,10 +40,8 @@ def test_eth_transfer_transaction_issual_emits_event(
 
 
 @pytest.mark.transaction_issual
-def test_transaction_count_increases(
-    owners, wallet, issue_eth_transfer_transaction_request
-):
-    issue_eth_transfer_transaction_request(owners[0])
+def test_transaction_count_increases(owners, wallet, issue_eth_transfer_request):
+    issue_eth_transfer_request(owners[0])
     assert wallet.getTransactionCount(sender=owners[0]) == 1
 
 
@@ -51,7 +49,7 @@ def test_transaction_count_increases(
 def test_eth_transaction_issual_reverts_if_not_sent_by_owner(
     not_owner,
     wallet,
-    issue_eth_transfer_transaction_request,
+    issue_eth_transfer_request,
 ):
     with ape.reverts(wallet.MultiSigWallet__NotOneOfTheOwners):
-        issue_eth_transfer_transaction_request(not_owner)
+        issue_eth_transfer_request(not_owner)

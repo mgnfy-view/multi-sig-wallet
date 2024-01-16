@@ -30,17 +30,24 @@ def token_contract(owners, project, web3):
 
 
 @pytest.fixture(scope="session")
-def issue_eth_transfer_transaction_request(owners, not_owner, wallet):
-    return lambda account: wallet.issueETHTransferTransactionRequest(
-        *[not_owner, "1 ether"], sender=account
-    )
+def issue_eth_transfer_request(owners, not_owner, wallet):
+    args = [not_owner, "1 ether"]
+    return lambda account: wallet.issueETHTransferRequest(*args, sender=account)
 
 
 @pytest.fixture(scope="session")
-def issue_token_transfer_transaction_request(
-    not_owner, owners, wallet, token_contract, web3
-):
-    args = [token_contract, 0, not_owner, web3.to_wei(0.5, "ether")]
-    return lambda account: wallet.issueTokenTransferTransactionRequest(
-        *args, sender=account
-    )
+def issue_token_transfer_request(not_owner, owners, wallet, token_contract, web3):
+    args = [not_owner, web3.to_wei(0.5, "ether"), token_contract]
+    return lambda account: wallet.issueTokenTransferRequest(*args, sender=account)
+
+
+@pytest.fixture(scope="session")
+def issue_token_transfer_from_request(not_owner, owners, wallet, token_contract, web3):
+    args = [owners[0], not_owner, web3.to_wei(0.5, "ether"), token_contract]
+    return lambda account: wallet.issueTokenTransferFromRequest(*args, sender=account)
+
+
+@pytest.fixture(scope="session")
+def issue_token_approval_request(not_owner, owners, wallet, token_contract, web3):
+    args = [not_owner, web3.to_wei(0.5, "ether"), token_contract]
+    return lambda account: wallet.issueTokenApprovalRequest(*args, sender=account)
