@@ -19,7 +19,7 @@ dependencies:
 
 solidity:
   import_remapping:
-    - "@openzeppelin=OpenZeppelin/v4.9.5"
+    - "@openzeppelin/contracts=OpenZeppelin/v4.9.5"
 
 hardhat:
   host: 127.0.0.1:8545
