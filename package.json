@@ -12,6 +12,8 @@
         "black": "black scripts/ tests/",
         "lint-sol": "npx solhint contracts/",
         "lint-py-scripts": "pylint scripts/",
-        "lint-py-tests": "pylint --load-plugins pylint_pytest tests/"
+        "lint-py-tests": "pylint --load-plugins pylint_pytest tests/",
+        "test-f": "ape test --network ::foundry",
+        "test-h": "ape test --network ::hardhat"
     }
 }
