@@ -1,28 +1,19 @@
 import pytest
 
 
-@pytest.mark.initialization
-def test_number_of_owners(wallet):
-    assert wallet.getNumberOfOwners() == 3
-
-
-@pytest.mark.initialization
-def test_if_owners_set_correctly(owners, wallet):
-    for count in range(0, 3):
-        assert wallet.getOwner(count) == owners[count]
-
-
-@pytest.mark.initialization
-def test_ownership(owners, wallet):
+@pytest.mark.wallet_initialization
+def test_wallet_owners_set_correctly(owners, wallet):
     for owner in owners:
-        assert wallet.isOneOfTheOwners(owner) is True
+        assert wallet.isOwner(owner) is True
 
 
-@pytest.mark.initialization
-def test_required_approvals(wallet):
+@pytest.mark.wallet_initialization
+def test_required_approvals_set_to_two(wallet):
     assert wallet.getRequiredApprovals() == 2
 
 
-@pytest.mark.initialization
-def test_transaction_count_set_to_zero(wallet):
-    assert wallet.getTransactionCount() == 0
+@pytest.mark.wallet_initialization
+def test_txn_counts_set_to_zero(wallet):
+    assert wallet.getEthTxnCount() == 0
+    assert wallet.getTokenTxnCount() == 0
+    assert wallet.getNftTxnCount() == 0
