@@ -2,46 +2,58 @@ import pytest
 import ape
 
 
-@pytest.mark.transaction_approval
-def test_only_owners_can_approve_transactions(
-    owners, not_owner, wallet, issue_eth_transfer_request
+@pytest.mark.txn_approval
+def test_eth_txns_can_only_be_approved_by_owners(
+    owners, not_owner, wallet, issue_eth_txn
 ):
-    issue_eth_transfer_request(owners[0])
+    issue_eth_txn(owners[0])
 
     with ape.reverts(wallet.MultiSigWallet__NotOneOfTheOwners):
-        wallet.approveTransaction(0, sender=not_owner)
+        wallet.approveTxn(0, 0, sender=not_owner)
 
 
-@pytest.mark.transaction_approval
-def test_transaction_approval_by_owners_increases_approval_count(
-    owners, wallet, issue_eth_transfer_request
+@pytest.mark.txn_approval
+def test_eth_txns_can_only_be_approved_once_by_each_owner(
+    owners, wallet, issue_eth_txn
 ):
-    issue_eth_transfer_request(owners[0])
-    wallet.approveTransaction(0, sender=owners[0])
+    issue_eth_txn(owners[0])
+    wallet.approveTxn(0, 0, sender=owners[0])
 
-    assert wallet.getTransactionDetails(0)[5] == 1
+    with ape.reverts(wallet.MultiSigWallet__TxnAlreadyApproved):
+        wallet.approveTxn(0, 0, sender=owners[0])
 
 
-@pytest.mark.transaction_approval
-def test_owner_can_approve_a_transaction_only_once(
-    owners, wallet, issue_eth_transfer_request
+@pytest.mark.txn_approval
+def test_eth_txns_approval_reverts_if_the_txn_has_already_been_executed(
+    owners, wallet, issue_eth_txn, web3
 ):
-    issue_eth_transfer_request(owners[0])
-    wallet.approveTransaction(0, sender=owners[0])
+    issue_eth_txn(owners[0])
+    wallet.approveTxn(0, 0, sender=owners[0])
+    wallet.approveTxn(0, 0, sender=owners[1])
+    owners[0].transfer(wallet, web3.to_wei(1, "ether"))
+    wallet.executeTxn(0, 0, sender=owners[0])
 
-    with ape.reverts(wallet.MultiSigWallet__TransactionAlreadyApprovedByOwner):
-        wallet.approveTransaction(0, sender=owners[0])
+    with ape.reverts(wallet.MultiSigWallet__TxnAlreadyExecuted):
+        wallet.approveTxn(0, 0, sender=owners[2])
 
 
-@pytest.mark.transaction_approval
-def test_transaction_approval_emits_transaction_approved_event(
-    owners, wallet, issue_eth_transfer_request
-):
-    issue_eth_transfer_request(owners[0])
-    transaction_receipt = wallet.approveTransaction(0, sender=owners[0])
+@pytest.mark.txn_approval
+def test_eth_txn_approval_increases_approval_count(owners, wallet, issue_eth_txn):
+    issue_eth_txn(owners[0])
+    wallet.approveTxn(0, 0, sender=owners[0])
+    wallet.approveTxn(0, 0, sender=owners[1])
+    wallet.approveTxn(0, 0, sender=owners[2])
 
-    expected_event_values = [0, owners[0]]
-    logs = list(transaction_receipt.decode_logs(wallet.TransactionApproved))
+    assert list(wallet.getEthTxnDetails(0)[2])[0] == 3
+
+
+@pytest.mark.txn_approval
+def test_eth_txn_approval_emits_txn_approved_event(owners, wallet, issue_eth_txn):
+    issue_eth_txn(owners[0])
+    txn_receipt = wallet.approveTxn(0, 0, sender=owners[1])
+
+    logs = txn_receipt.decode_logs(wallet.TxnApproved)
     assert len(logs) == 1
-    assert logs[0].transactionIndex == expected_event_values[0]
-    assert logs[0].owner == expected_event_values[1]
+    assert logs[0].txnType == 0
+    assert logs[0].txnIndex == 0
+    assert logs[0].by == owners[1]
