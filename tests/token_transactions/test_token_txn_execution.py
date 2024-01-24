@@ -3,31 +3,6 @@ import ape
 
 
 @pytest.mark.txn_execution
-def test_token_txn_reverts_if_not_enough_approvals_given(
-    owners, wallet, issue_token_transfer_txn
-):
-    issue_token_transfer_txn(owners[0])
-
-    with ape.reverts(wallet.MultiSigWallet__NotEnoughApprovalsGiven):
-        wallet.executeTxn(1, 0, sender=owners[0])
-
-
-@pytest.mark.txn_execution
-def test_token_txn_reverts_if_txn_already_executed(
-    owners, wallet, token_contract, issue_token_transfer_txn
-):
-    issue_token_transfer_txn(owners[0])
-    wallet.approveTxn(1, 0, sender=owners[0])
-    wallet.approveTxn(1, 0, sender=owners[1])
-
-    token_contract.transfer(wallet, "1 ether", sender=owners[0])
-    wallet.executeTxn(1, 0, sender=owners[0])
-
-    with ape.reverts(wallet.MultiSigWallet__TxnAlreadyExecuted):
-        wallet.executeTxn(1, 0, sender=owners[0])
-
-
-@pytest.mark.txn_execution
 def test_token_transfer_execution_reverts_if_wallet_does_not_have_enough_tokens(
     owners, wallet, issue_token_transfer_txn
 ):
@@ -72,7 +47,6 @@ def test_token_transfer_from_execution(
     issue_token_transfer_from_txn(owners[0])
     wallet.approveTxn(1, 0, sender=owners[0])
     wallet.approveTxn(1, 0, sender=owners[1])
-
     token_contract.approve(wallet, web3.to_wei(1, "ether"), sender=owners[0])
     wallet.executeTxn(1, 0, sender=owners[0])
 
@@ -103,3 +77,51 @@ def test_token_approval_execution(
     wallet.executeTxn(1, 0, sender=owners[0])
 
     assert token_contract.allowance(wallet, not_owner) == web3.to_wei(1, "ether")
+
+
+@pytest.mark.txn_execution
+def test_any_token_txn_execution_reverts_if_not_sent_by_owner(
+    owners, not_owner, wallet, issue_token_approval_txn
+):
+    issue_token_approval_txn(owners[0])
+    wallet.approveTxn(1, 0, sender=owners[0])
+    wallet.approveTxn(1, 0, sender=owners[1])
+
+    with ape.reverts(wallet.MultiSigWallet__NotOneOfTheOwners):
+        wallet.executeTxn(1, 0, sender=not_owner)
+
+
+@pytest.mark.txn_execution
+def test_any_token_txn_execution_reverts_if_invalid_index_is_passed(
+    owners, wallet, issue_token_approval_txn
+):
+    issue_token_approval_txn(owners[0])
+    wallet.approveTxn(1, 0, sender=owners[0])
+    wallet.approveTxn(1, 0, sender=owners[1])
+
+    with ape.reverts(wallet.MultiSigWallet__InvalidIndex):
+        wallet.executeTxn(1, 10, sender=owners[0])
+
+
+@pytest.mark.txn_execution
+def test_any_token_txn_reverts_if_not_enough_approvals_have_been_given(
+    owners, wallet, issue_token_transfer_txn
+):
+    issue_token_transfer_txn(owners[0])
+
+    with ape.reverts(wallet.MultiSigWallet__NotEnoughApprovalsGiven):
+        wallet.executeTxn(1, 0, sender=owners[0])
+
+
+@pytest.mark.txn_execution
+def test_token_txn_reverts_if_txn_has_already_been_executed(
+    owners, wallet, token_contract, issue_token_transfer_txn
+):
+    issue_token_transfer_txn(owners[0])
+    wallet.approveTxn(1, 0, sender=owners[0])
+    wallet.approveTxn(1, 0, sender=owners[1])
+    token_contract.transfer(wallet, "1 ether", sender=owners[0])
+    wallet.executeTxn(1, 0, sender=owners[0])
+
+    with ape.reverts(wallet.MultiSigWallet__TxnAlreadyExecuted):
+        wallet.executeTxn(1, 0, sender=owners[0])

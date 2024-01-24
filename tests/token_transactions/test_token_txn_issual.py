@@ -1,4 +1,5 @@
 import pytest
+import ape
 
 
 @pytest.mark.txn_issual
@@ -44,12 +45,43 @@ def test_token_approval_txn_issual(
 
 
 @pytest.mark.txn_issual
-def test_any_token_txn_issual_emits_event(owners, wallet, issue_token_approval_txn):
-    txn_receipt = issue_token_approval_txn(owners[0])
+def test_any_token_txn_issual_emits_event(
+    owners,
+    wallet,
+    issue_token_transfer_txn,
+    issue_token_transfer_from_txn,
+    issue_token_approval_txn,
+):
+    txn_receipts = []
+    txn_receipts.append(issue_token_transfer_txn(owners[0]))
+    txn_receipts.append(issue_token_transfer_from_txn(owners[0]))
+    txn_receipts.append(issue_token_approval_txn(owners[0]))
 
-    logs = txn_receipt.decode_logs(wallet.TxnIssued)
+    count = 0
+    while count < 3:
+        logs = txn_receipts[count].decode_logs(wallet.TxnIssued)
 
-    assert len(logs) == 1
-    assert logs[0].txnType == 1
-    assert logs[0].txnIndex == 0
-    assert logs[0].by == owners[0]
+        assert len(logs) == 1
+        assert logs[0].txnType == 1
+        assert logs[0].txnIndex == count
+        assert logs[0].by == owners[0]
+
+        count += 1
+
+
+@pytest.mark.txn_issual
+def test_only_owners_can_issue_token_txns(
+    not_owner,
+    wallet,
+    issue_token_transfer_txn,
+    issue_token_transfer_from_txn,
+    issue_token_approval_txn,
+):
+    with ape.reverts(wallet.MultiSigWallet__NotOneOfTheOwners):
+        issue_token_transfer_txn(not_owner)
+
+    with ape.reverts(wallet.MultiSigWallet__NotOneOfTheOwners):
+        issue_token_transfer_from_txn(not_owner)
+
+    with ape.reverts(wallet.MultiSigWallet__NotOneOfTheOwners):
+        issue_token_approval_txn(not_owner)

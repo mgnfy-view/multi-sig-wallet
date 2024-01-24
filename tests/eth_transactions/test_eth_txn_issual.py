@@ -3,13 +3,7 @@ import ape
 
 
 @pytest.mark.txn_issual
-def test_only_owners_can_issue_txns(not_owner, wallet, issue_eth_txn):
-    with ape.reverts(wallet.MultiSigWallet__NotOneOfTheOwners):
-        issue_eth_txn(not_owner)
-
-
-@pytest.mark.txn_issual
-def test_issue_eth_txn(owners, not_owner, wallet, issue_eth_txn, web3):
+def test_eth_txn_issual(owners, not_owner, wallet, issue_eth_txn, web3):
     issue_eth_txn(owners[0])
     txn_details = wallet.getEthTxnDetails(0)
 
@@ -34,3 +28,9 @@ def test_eth_txn_issual_emits_txn_issued_event(owners, wallet, issue_eth_txn):
     assert logs[0].txnType == 0
     assert logs[0].txnIndex == 0
     assert logs[0].by == owners[0]
+
+
+@pytest.mark.txn_issual
+def test_only_owners_can_issue_eth_txns(not_owner, wallet, issue_eth_txn):
+    with ape.reverts(wallet.MultiSigWallet__NotOneOfTheOwners):
+        issue_eth_txn(not_owner)
