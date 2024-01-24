@@ -69,7 +69,7 @@ def test_nft_txn_approval_reverts_if_the_txn_has_already_been_executed(
     issue_nft_transfer_txn(owners[0])
     wallet.approveTxn(2, 0, sender=owners[0])
     wallet.approveTxn(2, 0, sender=owners[1])
-    wallet.executeTxn(2, 0, sender=owners[0])
+    wallet.executeTxn(2, 0, sender=owners[2])
 
     with ape.reverts(wallet.MultiSigWallet__TxnAlreadyExecuted):
         wallet.approveTxn(2, 0, sender=owners[2])
