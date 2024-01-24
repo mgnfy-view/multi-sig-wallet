@@ -8,12 +8,15 @@
         "solhint": "^4.0.0"
     },
     "scripts": {
-        "prettier": "npx prettier contracts/ --plugin=prettier-plugin-solidity --write",
-        "black": "black scripts/ tests/",
-        "lint-sol": "npx solhint contracts/src/*.sol --ignore-path .solhintignore",
+        "prettier": "npx prettier contracts/**/*.sol --plugin=prettier-plugin-solidity --write",
+        "black": "black scripts/*.py tests/**/*.py",
+        "lint-sol": "npx solhint contracts/src/*.sol",
         "lint-py-scripts": "pylint scripts/**/*.py",
         "lint-py-tests": "pylint --load-plugins pylint_pytest tests/**/*.py",
         "test-f": "ape test --network ::foundry",
-        "test-h": "ape test --network ::hardhat"
+        "test-h": "ape test --network ::hardhat",
+        "test-eth": "ape test tests/eth_transactions/*.py --network ::foundry",
+        "test-token": "ape test tests/token_transactions/*.py --network ::foundry",
+        "test-nft": "ape test tests/nft_transactions/*.py --network ::foundry"
     }
 }
