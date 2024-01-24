@@ -16,8 +16,10 @@
 pragma solidity ^0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {IERC721} from "@openzeppelin/contracts/interfaces/IERC721.sol";
 
-contract MultiSigWallet {
+contract MultiSigWallet is IERC721Receiver {
     enum TxnType {
         ETH,
         Token,
@@ -54,7 +56,7 @@ contract MultiSigWallet {
         TxnAction action;
         address to;
         uint256 tokenId;
-        address from;
+        address allowanceFrom;
         address nftContractAddress;
         TxnDetails txnDetails;
     }
@@ -88,6 +90,7 @@ contract MultiSigWallet {
     error MultiSigWallet__TxnFailed();
     error MultiSigWallet__NotEnoughTokens(uint256 tokenBalance);
     error MultiSigWallet__NotEnoughAllowance(uint256 allowance);
+    error MultiSigWallet__TokenIdNotOwned();
 
     modifier onlyOneOfTheOwners() {
         if (!owners[msg.sender]) revert MultiSigWallet__NotOneOfTheOwners();
@@ -123,6 +126,15 @@ contract MultiSigWallet {
     }
 
     receive() external payable {}
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
 
     function issueEthTxn(
         address _to,
@@ -189,6 +201,22 @@ contract MultiSigWallet {
         emit TxnIssued(TxnType.Token, tokenTxnCount - 1, msg.sender);
     }
 
+    function issueNftTransferTxn(
+        address _to,
+        uint256 _tokenId,
+        address _nftContractAddress
+    ) external onlyOneOfTheOwners {
+        issueNftTxnHelper(
+            TxnAction.Transfer,
+            _to,
+            _tokenId,
+            address(0),
+            _nftContractAddress
+        );
+
+        emit TxnIssued(TxnType.NFT, nftTxnCount - 1, msg.sender);
+    }
+
     function approveTxn(
         TxnType _txnType,
         uint256 _txnIndex
@@ -213,6 +241,16 @@ contract MultiSigWallet {
             tokenTxns[_txnIndex].txnDetails.approvals++;
 
             emit TxnApproved(TxnType.Token, _txnIndex, msg.sender);
+        } else if (_txnType == TxnType.NFT) {
+            if (nftTxnApprovals[_txnIndex][msg.sender])
+                revert MultiSigWallet__TxnAlreadyApproved();
+            if (nftTxns[_txnIndex].txnDetails.executed)
+                revert MultiSigWallet__TxnAlreadyExecuted();
+
+            nftTxnApprovals[_txnIndex][msg.sender] = true;
+            nftTxns[_txnIndex].txnDetails.approvals++;
+
+            emit TxnApproved(TxnType.NFT, _txnIndex, msg.sender);
         }
     }
 
@@ -226,6 +264,9 @@ contract MultiSigWallet {
         } else if (_txnType == TxnType.Token) {
             executeTokenTxn(_txnIndex);
             emit TxnExecuted(TxnType.Token, _txnIndex, msg.sender);
+        } else if (_txnType == TxnType.NFT) {
+            executeNftTxn(_txnIndex);
+            emit TxnExecuted(TxnType.NFT, _txnIndex, msg.sender);
         }
     }
 
@@ -302,6 +343,26 @@ contract MultiSigWallet {
         tokenTxns.push(newTxn);
     }
 
+    function issueNftTxnHelper(
+        TxnAction _action,
+        address _to,
+        uint256 _tokenId,
+        address _from,
+        address _nftContractAddress
+    ) internal {
+        nftTxnCount++;
+
+        NftTxn memory newTxn = NftTxn({
+            action: _action,
+            to: _to,
+            tokenId: _tokenId,
+            allowanceFrom: _from,
+            nftContractAddress: _nftContractAddress,
+            txnDetails: TxnDetails({approvals: 0, executed: false})
+        });
+        nftTxns.push(newTxn);
+    }
+
     function executeEthTxn(uint256 _txnIndex) internal {
         if (ethTxns[_txnIndex].txnDetails.approvals < requiredApprovals)
             revert MultiSigWallet__NotEnoughApprovalsGiven(
@@ -367,6 +428,30 @@ contract MultiSigWallet {
             IERC20(tokenTxns[_txnIndex].tokenContractAddress).approve(
                 tokenTxns[_txnIndex].to,
                 tokenTxns[_txnIndex].amount
+            );
+        }
+    }
+
+    function executeNftTxn(uint256 _txnIndex) internal {
+        if (nftTxns[_txnIndex].txnDetails.approvals < requiredApprovals)
+            revert MultiSigWallet__NotEnoughApprovalsGiven(
+                nftTxns[_txnIndex].txnDetails.approvals
+            );
+        else if (nftTxns[_txnIndex].txnDetails.executed)
+            revert MultiSigWallet__TxnAlreadyExecuted();
+
+        if (nftTxns[_txnIndex].action == TxnAction.Transfer) {
+            address ownerOfNft = IERC721(nftTxns[_txnIndex].nftContractAddress)
+                .ownerOf(nftTxns[_txnIndex].tokenId);
+            if (ownerOfNft != address(this))
+                revert MultiSigWallet__TokenIdNotOwned();
+
+            nftTxns[_txnIndex].txnDetails.executed = true;
+
+            IERC721(nftTxns[_txnIndex].nftContractAddress).safeTransferFrom(
+                address(this),
+                nftTxns[_txnIndex].to,
+                nftTxns[_txnIndex].tokenId
             );
         }
     }
