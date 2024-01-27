@@ -10,19 +10,18 @@ contract Factory {
     function deployWallet(
         address[] memory _owners,
         uint256 _requiredApprovals
-    ) public {
-        MultiSigWallet multiSigWalletwallet = new MultiSigWallet(
+    ) external {
+        MultiSigWallet multiSigWallet = new MultiSigWallet(
             _owners,
             _requiredApprovals
         );
+
         for (uint256 count = 0; count < _owners.length; count++) {
-            ownersAndWallets[_owners[count]] = address(multiSigWalletwallet);
+            ownersAndWallets[_owners[count]] = address(multiSigWallet);
         }
     }
 
-    function getOwnersWalletAddress(
-        address _owner
-    ) public view returns (address) {
+    function getWalletAddress(address _owner) public view returns (address) {
         return ownersAndWallets[_owner];
     }
 }

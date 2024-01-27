@@ -91,6 +91,8 @@ contract MultiSigWallet is IERC721Receiver {
     error MultiSigWallet__NotEnoughTokens(uint256 tokenBalance);
     error MultiSigWallet__NotEnoughAllowance(uint256 allowance);
     error MultiSigWallet__TokenIdNotOwned();
+    error MultiSigWallet__NftNotApproved();
+    error MultiSigWallet__NotOwnerOfNft(uint256 tokenId);
 
     modifier onlyOneOfTheOwners() {
         if (!owners[msg.sender]) revert MultiSigWallet__NotOneOfTheOwners();
@@ -208,6 +210,39 @@ contract MultiSigWallet is IERC721Receiver {
     ) external onlyOneOfTheOwners {
         issueNftTxnHelper(
             TxnAction.Transfer,
+            _to,
+            _tokenId,
+            address(0),
+            _nftContractAddress
+        );
+
+        emit TxnIssued(TxnType.NFT, nftTxnCount - 1, msg.sender);
+    }
+
+    function issueNftTransferFromTxn(
+        address _to,
+        address _from,
+        uint256 _tokenId,
+        address _nftContractAddress
+    ) external onlyOneOfTheOwners {
+        issueNftTxnHelper(
+            TxnAction.TransferFrom,
+            _to,
+            _tokenId,
+            _from,
+            _nftContractAddress
+        );
+
+        emit TxnIssued(TxnType.NFT, nftTxnCount - 1, msg.sender);
+    }
+
+    function issueNftApprovalTxn(
+        address _to,
+        uint256 _tokenId,
+        address _nftContractAddress
+    ) external onlyOneOfTheOwners {
+        issueNftTxnHelper(
+            TxnAction.Approve,
             _to,
             _tokenId,
             address(0),
@@ -382,6 +417,7 @@ contract MultiSigWallet is IERC721Receiver {
     }
 
     function executeTokenTxn(uint256 _txnIndex) internal {
+        // test transferFrom and approve in pytest
         if (tokenTxns[_txnIndex].txnDetails.approvals < requiredApprovals)
             revert MultiSigWallet__NotEnoughApprovalsGiven(
                 tokenTxns[_txnIndex].txnDetails.approvals
@@ -450,6 +486,33 @@ contract MultiSigWallet is IERC721Receiver {
 
             IERC721(nftTxns[_txnIndex].nftContractAddress).safeTransferFrom(
                 address(this),
+                nftTxns[_txnIndex].to,
+                nftTxns[_txnIndex].tokenId
+            );
+        } else if (nftTxns[_txnIndex].action == TxnAction.TransferFrom) {
+            address approvedFor = IERC721(nftTxns[_txnIndex].nftContractAddress)
+                .getApproved(nftTxns[_txnIndex].tokenId);
+            if (approvedFor != address(this))
+                revert MultiSigWallet__NftNotApproved();
+
+            nftTxns[_txnIndex].txnDetails.executed = true;
+
+            IERC721(nftTxns[_txnIndex].nftContractAddress).safeTransferFrom(
+                nftTxns[_txnIndex].allowanceFrom,
+                nftTxns[_txnIndex].to,
+                nftTxns[_txnIndex].tokenId
+            );
+        } else if (nftTxns[_txnIndex].action == TxnAction.Approve) {
+            address nftOwner = IERC721(nftTxns[_txnIndex].nftContractAddress)
+                .ownerOf(nftTxns[_txnIndex].tokenId);
+            if (nftOwner != address(this))
+                revert MultiSigWallet__NotOwnerOfNft(
+                    nftTxns[_txnIndex].tokenId
+                );
+
+            nftTxns[_txnIndex].txnDetails.executed = true;
+
+            IERC721(nftTxns[_txnIndex].nftContractAddress).approve(
                 nftTxns[_txnIndex].to,
                 nftTxns[_txnIndex].tokenId
             );
