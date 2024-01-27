@@ -63,3 +63,15 @@ def issue_token_approval_txn(not_owner, wallet, token_contract):
 def issue_nft_transfer_txn(not_owner, wallet, test_nft):
     args = [not_owner, 1, test_nft]
     return lambda account: wallet.issueNftTransferTxn(*args, sender=account)
+
+
+@pytest.fixture(scope="session")
+def issue_nft_transfer_from_txn(not_owner, owners, wallet, test_nft):
+    args = [not_owner, owners[0], 1, test_nft]
+    return lambda account: wallet.issueNftTransferFromTxn(*args, sender=account)
+
+
+@pytest.fixture(scope="session")
+def issue_nft_approval_txn(not_owner, owners, wallet, test_nft):
+    args = [not_owner, 1, test_nft]
+    return lambda account: wallet.issueNftApprovalTxn(*args, sender=account)

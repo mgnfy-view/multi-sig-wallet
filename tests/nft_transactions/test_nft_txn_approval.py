@@ -1,8 +1,8 @@
 import pytest
 import ape
 
-# since approval function uses indexes, it is sufficient to test it for one type
-# of transaction action
+# the approval function is the sole place where all txns are approved. Thus,
+# it is sufficient to test it for one type of nft transaction action
 
 
 @pytest.mark.txn_approval
