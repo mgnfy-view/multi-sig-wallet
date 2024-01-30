@@ -1,0 +1,9 @@
+{
+    "recommendations": [
+        "NomicFoundation.hardhat-solidity",
+        "ms-python.python",
+        "ms-python.pylint",
+        "ms-python.black-formatter",
+        "esbenp.prettier-vscode"
+    ]
+}
