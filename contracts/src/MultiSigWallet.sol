@@ -1,16 +1,3 @@
-/** We'll follow the layout given below for our contract
-        1. Type declarations
-        2. State variables
-        3. Events
-        4. Errors
-        5. Modifiers
-        6. Functions
-           a. External
-           b. Public
-           c. Internal
-           d. Private
-*/
-
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.20;
@@ -76,8 +63,31 @@ contract MultiSigWallet is IERC721Receiver {
     uint256 private nftTxnCount;
     mapping(uint256 => mapping(address => bool)) private nftTxnApprovals;
 
+    /**
+     * @notice Emitted each time the wallet receives ETH.
+     * @param amount The amount of ETH received
+     */
+    event ETHReceived(uint256 amount);
+    /**
+     * @notice Emitted each time a new transaction is issued by one of the owners.
+     * @param txnType The type of transaction (ETH, token, or NFT)
+     * @param txnIndex The array index at which the transaction request details are stored
+     * @param by The address of the owner who issued the transaction
+     */
     event TxnIssued(TxnType txnType, uint256 txnIndex, address by);
+    /**
+     * @notice Emitted each time a transaction is approved by one of the owners.
+     * @param txnType The type of transaction (ETH, token, or NFT)
+     * @param txnIndex The array index at which the transaction request details are stored
+     * @param by The address of the owner who issued the transaction
+     */
     event TxnApproved(TxnType txnType, uint256 txnIndex, address by);
+    /**
+     * @notice Emitted each time a transaction is executed by one of the owners.
+     * @param txnType The type of transaction (ETH, token, or NFT)
+     * @param txnIndex The array index at which the transaction request details are stored
+     * @param by The address of the owner who issued the transaction
+     */
     event TxnExecuted(TxnType txnType, uint256 txnIndex, address by);
 
     error MultiSigWallet__NotOneOfTheOwners();
@@ -113,6 +123,10 @@ contract MultiSigWallet is IERC721Receiver {
         _;
     }
 
+    /**
+     * @param _owners A list of the wallet owners.
+     * @param _requiredApprovals The minimum number of approvals required for the wallet's transactions to be authorized
+     */
     constructor(address[] memory _owners, uint256 _requiredApprovals) {
         if (_requiredApprovals > _owners.length)
             revert MultiSigWallet__InvalidRequiredApprovals();
@@ -127,8 +141,16 @@ contract MultiSigWallet is IERC721Receiver {
         nftTxnCount = 0;
     }
 
-    receive() external payable {}
+    /**
+     * @notice Allows the contract to receive ETH.
+     */
+    receive() external payable {
+        emit ETHReceived(msg.value);
+    }
 
+    /**
+     * @notice Allows the contract to receive NFTs using the safeMint() function.
+     */
     function onERC721Received(
         address,
         address,
@@ -138,6 +160,11 @@ contract MultiSigWallet is IERC721Receiver {
         return IERC721Receiver.onERC721Received.selector;
     }
 
+    /**
+     * @notice Issues an ETH transfer request.
+     * @param _to The receiver of ETH
+     * @param _amount The amount of ETH to send
+     */
     function issueEthTxn(
         address _to,
         uint256 _amount
@@ -154,6 +181,12 @@ contract MultiSigWallet is IERC721Receiver {
         emit TxnIssued(TxnType.ETH, ethTxnCount - 1, msg.sender);
     }
 
+    /**
+     * @notice Issues a token transfer request.
+     * @param _to The recipient of tokens
+     * @param _amount The amount of tokens to send
+     * @param _tokenContractAddress The token's contract address
+     */
     function issueTokenTransferTxn(
         address _to,
         uint256 _amount,
@@ -170,6 +203,13 @@ contract MultiSigWallet is IERC721Receiver {
         emit TxnIssued(TxnType.Token, tokenTxnCount - 1, msg.sender);
     }
 
+    /**
+     * @notice Issues a token transfer from request. This request will allow the wallet to spend the token allowance given by the supplied address (_from).
+     * @param _to The recipient of the tokens
+     * @param _amount The amount of tokens to send
+     * @param _from The address that gave a token allowance to this wallet
+     * @param _tokenContractAddress The token's contract address
+     */
     function issueTokenTransferFromTxn(
         address _to,
         uint256 _amount,
@@ -187,6 +227,12 @@ contract MultiSigWallet is IERC721Receiver {
         emit TxnIssued(TxnType.Token, tokenTxnCount - 1, msg.sender);
     }
 
+    /**
+     * @notice Issues a token approval request. This request will allow the supplied address (_to) to spend tokens on behalf of this wallet.
+     * @param _to The address which receives an allowance
+     * @param _amount The amount of tokens to approve
+     * @param _tokenContractAddress The token's contract address
+     */
     function issueTokenApprovalTxn(
         address _to,
         uint256 _amount,
@@ -203,6 +249,12 @@ contract MultiSigWallet is IERC721Receiver {
         emit TxnIssued(TxnType.Token, tokenTxnCount - 1, msg.sender);
     }
 
+    /**
+     * @notice Issues an NFT transfer request.
+     * @param _to The receiver of the NFT
+     * @param _tokenId The NFT's tokenId
+     * @param _nftContractAddress The contract address that issued the NFT
+     */
     function issueNftTransferTxn(
         address _to,
         uint256 _tokenId,
@@ -219,6 +271,13 @@ contract MultiSigWallet is IERC721Receiver {
         emit TxnIssued(TxnType.NFT, nftTxnCount - 1, msg.sender);
     }
 
+    /**
+     * @notice Issues an NFT transfer from request. This request will allow the wallet to transfer the NFT tokenId allowance given by the supplied address (_from).
+     * @param _to The recipient of the NFT
+     * @param _from The address that gave the NFT tokenId allowance to this wallet
+     * @param _tokenId The NFT tokenId approved for this contract
+     * @param _nftContractAddress The contract address that issued the NFT
+     */
     function issueNftTransferFromTxn(
         address _to,
         address _from,
@@ -236,6 +295,12 @@ contract MultiSigWallet is IERC721Receiver {
         emit TxnIssued(TxnType.NFT, nftTxnCount - 1, msg.sender);
     }
 
+    /**
+     * @notice Issues an NFT approval request.
+     * @param _to The recipient of the NFT tokenId allowance
+     * @param _tokenId The NFT tokenId to approve for the spender
+     * @param _nftContractAddress The contract address that issued the NFT
+     */
     function issueNftApprovalTxn(
         address _to,
         uint256 _tokenId,
@@ -252,6 +317,11 @@ contract MultiSigWallet is IERC721Receiver {
         emit TxnIssued(TxnType.NFT, nftTxnCount - 1, msg.sender);
     }
 
+    /**
+     * @notice Allows owners to approve transactions.
+     * @param _txnType The type of transaction to approve (ETH, toke, or NFT)
+     * @param _txnIndex The index where the transaction request details are stored
+     */
     function approveTxn(
         TxnType _txnType,
         uint256 _txnIndex
@@ -289,6 +359,11 @@ contract MultiSigWallet is IERC721Receiver {
         }
     }
 
+    /**
+     * @notice Executes a transaction if it has enough approvals, and if it hasn't been executed yet
+     * @param _txnType The type of transaction to execute (ETH, toke, or NFT)
+     * @param _txnIndex The index where the transaction request details are stored
+     */
     function executeTxn(
         TxnType _txnType,
         uint256 _txnIndex
