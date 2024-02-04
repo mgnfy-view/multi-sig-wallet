@@ -36,6 +36,11 @@ def test_nft(owners, project):
 
 
 @pytest.fixture(scope="session")
+def factory(owners, project):
+    return project.Factory.deploy(sender=owners[0])
+
+
+@pytest.fixture(scope="session")
 def issue_eth_txn(not_owner, wallet):
     args = [not_owner, "1 ether"]
     return lambda account: wallet.issueEthTxn(*args, sender=account)
