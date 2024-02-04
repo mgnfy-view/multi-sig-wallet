@@ -14,7 +14,7 @@ contract MultiSigWallet is IERC721Receiver {
     }
 
     enum TxnAction {
-        Transfer,
+        Transfer, // ETH transactions have this action by default
         TransferFrom,
         Approve
     }
@@ -34,7 +34,7 @@ contract MultiSigWallet is IERC721Receiver {
         TxnAction action;
         address to;
         uint256 amount;
-        address allowanceFrom;
+        address allowanceProvider;
         address tokenContractAddress;
         TxnDetails txnDetails;
     }
@@ -43,50 +43,56 @@ contract MultiSigWallet is IERC721Receiver {
         TxnAction action;
         address to;
         uint256 tokenId;
-        address allowanceFrom;
+        address allowanceProvider;
         address nftContractAddress;
         TxnDetails txnDetails;
     }
 
-    mapping(address => bool) private owners;
-    uint256 private requiredApprovals;
+    mapping(address => bool) private s_owners;
+    uint256 private s_requiredApprovals;
 
-    EthTxn[] private ethTxns;
-    uint256 private ethTxnCount;
-    mapping(uint256 => mapping(address => bool)) private ethTxnApprovals;
+    EthTxn[] private s_ethTxns;
+    uint256 private s_ethTxnCount;
+    // ETH txn array index --> owner --> approval given?
+    mapping(uint256 => mapping(address => bool)) private s_ethTxnApprovals;
 
-    TokenTxn[] private tokenTxns;
-    uint256 private tokenTxnCount;
-    mapping(uint256 => mapping(address => bool)) private tokenTxnApprovals;
+    TokenTxn[] private s_tokenTxns;
+    uint256 private s_tokenTxnCount;
+    // token txn array index --> owner --> approval given?
+    mapping(uint256 => mapping(address => bool)) private s_tokenTxnApprovals;
 
-    NftTxn[] private nftTxns;
-    uint256 private nftTxnCount;
-    mapping(uint256 => mapping(address => bool)) private nftTxnApprovals;
+    NftTxn[] private s_nftTxns;
+    uint256 private s_nftTxnCount;
+    // NFT txn array index --> owner --> approval given?
+    mapping(uint256 => mapping(address => bool)) private s_nftTxnApprovals;
 
     /**
      * @notice Emitted each time the wallet receives ETH.
-     * @param amount The amount of ETH received
+     * @param amount The amount of ETH received.
      */
     event ETHReceived(uint256 amount);
+
     /**
      * @notice Emitted each time a new transaction is issued by one of the owners.
-     * @param txnType The type of transaction (ETH, token, or NFT)
-     * @param txnIndex The array index at which the transaction request details are stored
-     * @param by The address of the owner who issued the transaction
+     * @param txnType The type of transaction (ETH, token, or NFT).
+     * @param txnIndex The array index at which the transaction request details are stored for the given transaction type.
+     * @param by The address of the owner who issued the transaction.
      */
     event TxnIssued(TxnType txnType, uint256 txnIndex, address by);
+
     /**
      * @notice Emitted each time a transaction is approved by one of the owners.
-     * @param txnType The type of transaction (ETH, token, or NFT)
-     * @param txnIndex The array index at which the transaction request details are stored
-     * @param by The address of the owner who issued the transaction
+     * @param txnType The type of transaction (ETH, token, or NFT).
+     * @param txnIndex The array index at which the transaction request details are stored for the given transaction type.
+     * @param by The address of the owner who issued the transaction.
      */
     event TxnApproved(TxnType txnType, uint256 txnIndex, address by);
+
     /**
      * @notice Emitted each time a transaction is executed by one of the owners.
-     * @param txnType The type of transaction (ETH, token, or NFT)
-     * @param txnIndex The array index at which the transaction request details are stored
-     * @param by The address of the owner who issued the transaction
+     * @param txnType The type of transaction (ETH, token, or NFT).
+     * @param txnIndex The array index at which the transaction request details are stored for the given transaction type.
+     * @param by The address of the owner who issued the transaction.
      */
     event TxnExecuted(TxnType txnType, uint256 txnIndex, address by);
 
@@ -105,40 +111,41 @@ contract MultiSigWallet is IERC721Receiver {
     error MultiSigWallet__NotOwnerOfNft(uint256 tokenId);
 
     modifier onlyOneOfTheOwners() {
-        if (!owners[msg.sender]) revert MultiSigWallet__NotOneOfTheOwners();
+        if (!s_owners[msg.sender]) revert MultiSigWallet__NotOneOfTheOwners();
         _;
     }
 
-    modifier onlyValidTxnIndex(TxnType _txnType, uint256 _txnIndex) {
-        if (_txnType == TxnType.ETH) {
-            if (_txnIndex > ethTxns.length)
+    modifier onlyValidTxnIndex(TxnType txnType, uint256 txnIndex) {
+        if (txnType == TxnType.ETH) {
+            if (txnIndex > s_ethTxns.length)
                 revert MultiSigWallet__InvalidIndex();
-        } else if (_txnType == TxnType.Token) {
-            if (_txnIndex > tokenTxns.length)
+        } else if (txnType == TxnType.Token) {
+            if (txnIndex > s_tokenTxns.length)
                 revert MultiSigWallet__InvalidIndex();
-        } else if (_txnType == TxnType.NFT) {
-            if (_txnIndex > nftTxns.length)
+        } else if (txnType == TxnType.NFT) {
+            if (txnIndex > s_nftTxns.length)
                 revert MultiSigWallet__InvalidIndex();
         }
         _;
     }
 
     /**
-     * @param _owners A list of the wallet owners.
-     * @param _requiredApprovals The minimum number of approvals required for the wallet's transactions to be authorized
+     * @notice Initialises the wallet contract by setting the owners, required approvals, and transaction counts.
+     * @param owners A list of the wallet owners.
+     * @param requiredApprovals The minimum number of approvals required for the wallet's transactions to be authorized.
      */
-    constructor(address[] memory _owners, uint256 _requiredApprovals) {
-        if (_requiredApprovals > _owners.length)
+    constructor(address[] memory owners, uint256 requiredApprovals) {
+        if (requiredApprovals > owners.length)
             revert MultiSigWallet__InvalidRequiredApprovals();
 
-        for (uint32 count = 0; count < _owners.length; count++) {
-            owners[_owners[count]] = true;
+        for (uint32 count = 0; count < owners.length; count++) {
+            s_owners[owners[count]] = true;
         }
 
-        requiredApprovals = _requiredApprovals;
-        ethTxnCount = 0;
-        tokenTxnCount = 0;
-        nftTxnCount = 0;
+        s_requiredApprovals = requiredApprovals;
+        s_ethTxnCount = 0;
+        s_tokenTxnCount = 0;
+        s_nftTxnCount = 0;
     }
 
     /**
@@ -162,98 +169,98 @@ contract MultiSigWallet is IERC721Receiver {
 
     /**
      * @notice Issues an ETH transfer request.
-     * @param _to The receiver of ETH
-     * @param _amount The amount of ETH to send
+     * @param to The recipient of ETH.
+     * @param amount The amount of ETH to send.
      */
     function issueEthTxn(
-        address _to,
-        uint256 _amount
+        address to,
+        uint256 amount
     ) external onlyOneOfTheOwners {
-        ethTxnCount++;
+        s_ethTxnCount++;
 
         EthTxn memory newTxn = EthTxn({
-            to: _to,
-            amount: _amount,
+            to: to,
+            amount: amount,
             txnDetails: TxnDetails({approvals: 0, executed: false})
         });
-        ethTxns.push(newTxn);
+        s_ethTxns.push(newTxn);
 
-        emit TxnIssued(TxnType.ETH, ethTxnCount - 1, msg.sender);
+        emit TxnIssued(TxnType.ETH, s_ethTxnCount - 1, msg.sender);
     }
 
     /**
      * @notice Issues a token transfer request.
-     * @param _to The recipient of tokens
-     * @param _amount The amount of tokens to send
-     * @param _tokenContractAddress The token's contract address
+     * @param to The recipient of tokens.
+     * @param amount The amount of tokens to send.
+     * @param tokenContractAddress The token's contract address.
      */
     function issueTokenTransferTxn(
-        address _to,
-        uint256 _amount,
-        address _tokenContractAddress
+        address to,
+        uint256 amount,
+        address tokenContractAddress
     ) external onlyOneOfTheOwners {
         issueTokenTxnHelper(
             TxnAction.Transfer,
-            _to,
-            _amount,
+            to,
+            amount,
             address(0),
-            _tokenContractAddress
+            tokenContractAddress
         );
 
-        emit TxnIssued(TxnType.Token, tokenTxnCount - 1, msg.sender);
+        emit TxnIssued(TxnType.Token, s_tokenTxnCount - 1, msg.sender);
     }
 
     /**
-     * @notice Issues a token transfer from request. This request will allow the wallet to spend the token allowance given by the supplied address (_from).
-     * @param _to The recipient of the tokens
-     * @param _amount The amount of tokens to send
-     * @param _from The address that gave a token allowance to this wallet
-     * @param _tokenContractAddress The token's contract address
+     * @notice Issues a token transfer from request. This request will allow the wallet to spend the token allowance given by the allowance provider.
+     * @param to The recipient of the tokens.
+     * @param amount The amount of tokens to send.
+     * @param allowanceProvider The address that gave a token allowance to this wallet.
+     * @param tokenContractAddress The token's contract address.
      */
     function issueTokenTransferFromTxn(
-        address _to,
-        uint256 _amount,
-        address _from,
-        address _tokenContractAddress
+        address to,
+        uint256 amount,
+        address allowanceProvider,
+        address tokenContractAddress
     ) external onlyOneOfTheOwners {
         issueTokenTxnHelper(
             TxnAction.TransferFrom,
-            _to,
-            _amount,
-            _from,
-            _tokenContractAddress
+            to,
+            amount,
+            allowanceProvider,
+            tokenContractAddress
         );
 
-        emit TxnIssued(TxnType.Token, tokenTxnCount - 1, msg.sender);
+        emit TxnIssued(TxnType.Token, s_tokenTxnCount - 1, msg.sender);
     }
 
     /**
-     * @notice Issues a token approval request. This request will allow the supplied address (_to) to spend tokens on behalf of this wallet.
-     * @param _to The address which receives an allowance
-     * @param _amount The amount of tokens to approve
-     * @param _tokenContractAddress The token's contract address
+     * @notice Issues a token approval request. This request will provide a token allowance to the recipient.
+     * @param to The receipient of an allowance.
+     * @param amount The amount of tokens to approve.
+     * @param tokenContractAddress The token's contract address.
      */
     function issueTokenApprovalTxn(
-        address _to,
-        uint256 _amount,
-        address _tokenContractAddress
+        address to,
+        uint256 amount,
+        address tokenContractAddress
     ) external onlyOneOfTheOwners {
         issueTokenTxnHelper(
             TxnAction.Approve,
-            _to,
-            _amount,
+            to,
+            amount,
             address(0),
-            _tokenContractAddress
+            tokenContractAddress
         );
 
-        emit TxnIssued(TxnType.Token, tokenTxnCount - 1, msg.sender);
+        emit TxnIssued(TxnType.Token, s_tokenTxnCount - 1, msg.sender);
     }
 
     /**
      * @notice Issues an NFT transfer request.
-     * @param _to The receiver of the NFT
-     * @param _tokenId The NFT's tokenId
-     * @param _nftContractAddress The contract address that issued the NFT
+     * @param _to The recipient of the NFT.
+     * @param _tokenId The NFT's tokenId.
+     * @param _nftContractAddress The contract address that issued the NFT.
      */
     function issueNftTransferTxn(
         address _to,
@@ -268,328 +275,385 @@ contract MultiSigWallet is IERC721Receiver {
             _nftContractAddress
         );
 
-        emit TxnIssued(TxnType.NFT, nftTxnCount - 1, msg.sender);
+        emit TxnIssued(TxnType.NFT, s_nftTxnCount - 1, msg.sender);
     }
 
     /**
-     * @notice Issues an NFT transfer from request. This request will allow the wallet to transfer the NFT tokenId allowance given by the supplied address (_from).
-     * @param _to The recipient of the NFT
-     * @param _from The address that gave the NFT tokenId allowance to this wallet
-     * @param _tokenId The NFT tokenId approved for this contract
-     * @param _nftContractAddress The contract address that issued the NFT
+     * @notice Issues an NFT transfer from request. This request will allow the wallet to transfer the NFT tokenId allowance on behalf of the allowance provider.
+     * @param to The recipient of the NFT.
+     * @param allowanceProvider The address that gave the NFT tokenId allowance to this wallet.
+     * @param tokenId The NFT tokenId approved for this contract.
+     * @param nftContractAddress The contract address that issued the NFT.
      */
     function issueNftTransferFromTxn(
-        address _to,
-        address _from,
-        uint256 _tokenId,
-        address _nftContractAddress
+        address to,
+        address allowanceProvider,
+        uint256 tokenId,
+        address nftContractAddress
     ) external onlyOneOfTheOwners {
         issueNftTxnHelper(
             TxnAction.TransferFrom,
-            _to,
-            _tokenId,
-            _from,
-            _nftContractAddress
+            to,
+            tokenId,
+            allowanceProvider,
+            nftContractAddress
         );
 
-        emit TxnIssued(TxnType.NFT, nftTxnCount - 1, msg.sender);
+        emit TxnIssued(TxnType.NFT, s_nftTxnCount - 1, msg.sender);
     }
 
     /**
      * @notice Issues an NFT approval request.
-     * @param _to The recipient of the NFT tokenId allowance
-     * @param _tokenId The NFT tokenId to approve for the spender
-     * @param _nftContractAddress The contract address that issued the NFT
+     * @param to The recipient of the NFT tokenId allowance.
+     * @param tokenId The NFT tokenId to approve for the spender.
+     * @param nftContractAddress The NFT's contract address
      */
     function issueNftApprovalTxn(
-        address _to,
-        uint256 _tokenId,
-        address _nftContractAddress
+        address to,
+        uint256 tokenId,
+        address nftContractAddress
     ) external onlyOneOfTheOwners {
         issueNftTxnHelper(
             TxnAction.Approve,
-            _to,
-            _tokenId,
+            to,
+            tokenId,
             address(0),
-            _nftContractAddress
+            nftContractAddress
         );
 
-        emit TxnIssued(TxnType.NFT, nftTxnCount - 1, msg.sender);
+        emit TxnIssued(TxnType.NFT, s_nftTxnCount - 1, msg.sender);
     }
 
     /**
      * @notice Allows owners to approve transactions.
-     * @param _txnType The type of transaction to approve (ETH, toke, or NFT)
-     * @param _txnIndex The index where the transaction request details are stored
+     * @param txnType The type of transaction to approve (ETH, toke, or NFT).
+     * @param txnIndex The array index where the transaction request details are stored.
      */
     function approveTxn(
-        TxnType _txnType,
-        uint256 _txnIndex
-    ) external onlyOneOfTheOwners onlyValidTxnIndex(_txnType, _txnIndex) {
-        if (_txnType == TxnType.ETH) {
-            if (ethTxnApprovals[_txnIndex][msg.sender])
+        TxnType txnType,
+        uint256 txnIndex
+    ) external onlyOneOfTheOwners onlyValidTxnIndex(txnType, txnIndex) {
+        if (txnType == TxnType.ETH) {
+            if (s_ethTxnApprovals[txnIndex][msg.sender])
                 revert MultiSigWallet__TxnAlreadyApproved();
-            if (ethTxns[_txnIndex].txnDetails.executed)
+            if (s_ethTxns[txnIndex].txnDetails.executed)
                 revert MultiSigWallet__TxnAlreadyExecuted();
 
-            ethTxnApprovals[_txnIndex][msg.sender] = true;
-            ethTxns[_txnIndex].txnDetails.approvals++;
+            s_ethTxnApprovals[txnIndex][msg.sender] = true;
+            s_ethTxns[txnIndex].txnDetails.approvals++;
 
-            emit TxnApproved(TxnType.ETH, _txnIndex, msg.sender);
-        } else if (_txnType == TxnType.Token) {
-            if (tokenTxnApprovals[_txnIndex][msg.sender])
+            emit TxnApproved(TxnType.ETH, txnIndex, msg.sender);
+        } else if (txnType == TxnType.Token) {
+            if (s_tokenTxnApprovals[txnIndex][msg.sender])
                 revert MultiSigWallet__TxnAlreadyApproved();
-            if (tokenTxns[_txnIndex].txnDetails.executed)
+            if (s_tokenTxns[txnIndex].txnDetails.executed)
                 revert MultiSigWallet__TxnAlreadyExecuted();
 
-            tokenTxnApprovals[_txnIndex][msg.sender] = true;
-            tokenTxns[_txnIndex].txnDetails.approvals++;
+            s_tokenTxnApprovals[txnIndex][msg.sender] = true;
+            s_tokenTxns[txnIndex].txnDetails.approvals++;
 
-            emit TxnApproved(TxnType.Token, _txnIndex, msg.sender);
-        } else if (_txnType == TxnType.NFT) {
-            if (nftTxnApprovals[_txnIndex][msg.sender])
+            emit TxnApproved(TxnType.Token, txnIndex, msg.sender);
+        } else if (txnType == TxnType.NFT) {
+            if (s_nftTxnApprovals[txnIndex][msg.sender])
                 revert MultiSigWallet__TxnAlreadyApproved();
-            if (nftTxns[_txnIndex].txnDetails.executed)
+            if (s_nftTxns[txnIndex].txnDetails.executed)
                 revert MultiSigWallet__TxnAlreadyExecuted();
 
-            nftTxnApprovals[_txnIndex][msg.sender] = true;
-            nftTxns[_txnIndex].txnDetails.approvals++;
+            s_nftTxnApprovals[txnIndex][msg.sender] = true;
+            s_nftTxns[txnIndex].txnDetails.approvals++;
 
-            emit TxnApproved(TxnType.NFT, _txnIndex, msg.sender);
+            emit TxnApproved(TxnType.NFT, txnIndex, msg.sender);
         }
     }
 
     /**
-     * @notice Executes a transaction if it has enough approvals, and if it hasn't been executed yet
-     * @param _txnType The type of transaction to execute (ETH, toke, or NFT)
-     * @param _txnIndex The index where the transaction request details are stored
+     * @notice Executes a transaction if it has enough approvals, and if it hasn't been executed yet.
+     * @param txnType The type of transaction to execute (ETH, toke, or NFT).
+     * @param txnIndex The array index where the transaction request details are stored.
      */
     function executeTxn(
-        TxnType _txnType,
-        uint256 _txnIndex
-    ) external onlyOneOfTheOwners onlyValidTxnIndex(_txnType, _txnIndex) {
-        if (_txnType == TxnType.ETH) {
-            executeEthTxn(_txnIndex);
-            emit TxnExecuted(TxnType.ETH, _txnIndex, msg.sender);
-        } else if (_txnType == TxnType.Token) {
-            executeTokenTxn(_txnIndex);
-            emit TxnExecuted(TxnType.Token, _txnIndex, msg.sender);
-        } else if (_txnType == TxnType.NFT) {
-            executeNftTxn(_txnIndex);
-            emit TxnExecuted(TxnType.NFT, _txnIndex, msg.sender);
+        TxnType txnType,
+        uint256 txnIndex
+    ) external onlyOneOfTheOwners onlyValidTxnIndex(txnType, txnIndex) {
+        if (txnType == TxnType.ETH) {
+            executeEthTxn(txnIndex);
+            emit TxnExecuted(TxnType.ETH, txnIndex, msg.sender);
+        } else if (txnType == TxnType.Token) {
+            executeTokenTxn(txnIndex);
+            emit TxnExecuted(TxnType.Token, txnIndex, msg.sender);
+        } else if (txnType == TxnType.NFT) {
+            executeNftTxn(txnIndex);
+            emit TxnExecuted(TxnType.NFT, txnIndex, msg.sender);
         }
     }
 
-    function isOwner(address _account) public view returns (bool) {
-        return owners[_account];
+    /**
+     * @notice Returns a boolean value indicating whether the account is an owner of this wallet or not.
+     * @param account The account whose ownership you want to check.
+     */
+    function isOwner(address account) public view returns (bool) {
+        return s_owners[account];
     }
 
+    /**
+     * @notice Returns the minimum number of approvals required for transactions to be executed.
+     */
     function getRequiredApprovals() public view returns (uint256) {
-        return requiredApprovals;
+        return s_requiredApprovals;
     }
 
+    /**
+     * @notice Returns the total number of ETH transactions issued.
+     */
     function getEthTxnCount() public view returns (uint256) {
-        return ethTxnCount;
+        return s_ethTxnCount;
     }
 
+    /**
+     * @notice Returns the total number of token transactions issued.
+     */
     function getTokenTxnCount() public view returns (uint256) {
-        return tokenTxnCount;
+        return s_tokenTxnCount;
     }
 
+    /**
+     * @notice Returns the total number of NFT transactions issued.
+     */
     function getNftTxnCount() public view returns (uint256) {
-        return nftTxnCount;
+        return s_nftTxnCount;
     }
 
+    /**
+     * @notice Returns a struct consisting of the ETH transaction request details.
+     * @param txnIndex The array index at which the transaction request details are stored.
+     */
     function getEthTxnDetails(
-        uint256 _txnIndex
+        uint256 txnIndex
     )
         public
         view
-        onlyValidTxnIndex(TxnType.ETH, _txnIndex)
+        onlyValidTxnIndex(TxnType.ETH, txnIndex)
         returns (EthTxn memory)
     {
-        return ethTxns[_txnIndex];
+        return s_ethTxns[txnIndex];
     }
 
+    /**
+     * @notice Returns a struct consisting of the token transaction request details.
+     * @param txnIndex The array index at which the transaction request details are stored.
+     */
     function getTokenTxnDetails(
-        uint256 _txnIndex
+        uint256 txnIndex
     )
         public
         view
-        onlyValidTxnIndex(TxnType.Token, _txnIndex)
+        onlyValidTxnIndex(TxnType.Token, txnIndex)
         returns (TokenTxn memory)
     {
-        return tokenTxns[_txnIndex];
+        return s_tokenTxns[txnIndex];
     }
 
+    /**
+     * @notice Returns a struct consisting of the NFT transaction request details.
+     * @param txnIndex The array index at which the transaction request details are stored.
+     */
     function getNftTxnDetails(
-        uint256 _txnIndex
+        uint256 txnIndex
     )
         public
         view
-        onlyValidTxnIndex(TxnType.NFT, _txnIndex)
+        onlyValidTxnIndex(TxnType.NFT, txnIndex)
         returns (NftTxn memory)
     {
-        return nftTxns[_txnIndex];
+        return s_nftTxns[txnIndex];
     }
 
+    /**
+     * @notice All token transaction issual requests are directed here.
+     * @param action The type of token transaction request (transfer, transfer from, or approve).
+     * @param to The recipient of tokens.
+     * @param amount The amount of tokens.
+     * @param allowanceProvider The allowance provider.
+     * @param tokenContractAddress The token's contract address.
+     */
     function issueTokenTxnHelper(
-        TxnAction _action,
-        address _to,
-        uint256 _amount,
-        address _from,
-        address _tokenContractAddress
+        TxnAction action,
+        address to,
+        uint256 amount,
+        address allowanceProvider,
+        address tokenContractAddress
     ) internal {
-        tokenTxnCount++;
+        s_tokenTxnCount++;
 
         TokenTxn memory newTxn = TokenTxn({
-            action: _action,
-            to: _to,
-            amount: _amount,
-            allowanceFrom: _from,
-            tokenContractAddress: _tokenContractAddress,
+            action: action,
+            to: to,
+            amount: amount,
+            allowanceProvider: allowanceProvider,
+            tokenContractAddress: tokenContractAddress,
             txnDetails: TxnDetails({approvals: 0, executed: false})
         });
-        tokenTxns.push(newTxn);
+        s_tokenTxns.push(newTxn);
     }
 
+    /**
+     * @notice All NFT transaction issual requests are directed here.
+     * @param action The type of NFT transaction request (transfer, transfer from, or approve).
+     * @param to The recipient of NFT.
+     * @param tokenId The NFT's tokenId.
+     * @param allowanceProvider The NFT tokenId allowance provider.
+     * @param nftContractAddress The NFT's contract address.
+     */
     function issueNftTxnHelper(
-        TxnAction _action,
-        address _to,
-        uint256 _tokenId,
-        address _from,
-        address _nftContractAddress
+        TxnAction action,
+        address to,
+        uint256 tokenId,
+        address allowanceProvider,
+        address nftContractAddress
     ) internal {
-        nftTxnCount++;
+        s_nftTxnCount++;
 
         NftTxn memory newTxn = NftTxn({
-            action: _action,
-            to: _to,
-            tokenId: _tokenId,
-            allowanceFrom: _from,
-            nftContractAddress: _nftContractAddress,
+            action: action,
+            to: to,
+            tokenId: tokenId,
+            allowanceProvider: allowanceProvider,
+            nftContractAddress: nftContractAddress,
             txnDetails: TxnDetails({approvals: 0, executed: false})
         });
-        nftTxns.push(newTxn);
+        s_nftTxns.push(newTxn);
     }
 
-    function executeEthTxn(uint256 _txnIndex) internal {
-        if (ethTxns[_txnIndex].txnDetails.approvals < requiredApprovals)
+    /**
+     * @notice Executes ETH an transaction if it has enough approvals, and if it hasn't been executed before.
+     * @param txnIndex The array index where the transaction request details have been stored.
+     */
+    function executeEthTxn(uint256 txnIndex) internal {
+        if (s_ethTxns[txnIndex].txnDetails.approvals < s_requiredApprovals)
             revert MultiSigWallet__NotEnoughApprovalsGiven(
-                ethTxns[_txnIndex].txnDetails.approvals
+                s_ethTxns[txnIndex].txnDetails.approvals
             );
-        else if (ethTxns[_txnIndex].txnDetails.executed)
+        else if (s_ethTxns[txnIndex].txnDetails.executed)
             revert MultiSigWallet__TxnAlreadyExecuted();
-        else if (address(this).balance < ethTxns[_txnIndex].amount)
+        else if (address(this).balance < s_ethTxns[txnIndex].amount)
             revert MultiSigWallet__NotEnoughEtH(address(this).balance);
 
-        ethTxns[_txnIndex].txnDetails.executed = true;
+        s_ethTxns[txnIndex].txnDetails.executed = true;
 
-        (bool success, ) = ethTxns[_txnIndex].to.call{
-            value: ethTxns[_txnIndex].amount
+        (bool success, ) = s_ethTxns[txnIndex].to.call{
+            value: s_ethTxns[txnIndex].amount
         }("");
         if (!success) revert MultiSigWallet__TxnFailed();
     }
 
-    function executeTokenTxn(uint256 _txnIndex) internal {
+    /**
+     * @notice Executes token transactions if they have enough approvals, and if they haven't been executed before
+     * @param txnIndex The array index where the transaction request details have been stored.
+     */
+    function executeTokenTxn(uint256 txnIndex) internal {
         // test transferFrom and approve in pytest
-        if (tokenTxns[_txnIndex].txnDetails.approvals < requiredApprovals)
+        if (s_tokenTxns[txnIndex].txnDetails.approvals < s_requiredApprovals)
             revert MultiSigWallet__NotEnoughApprovalsGiven(
-                tokenTxns[_txnIndex].txnDetails.approvals
+                s_tokenTxns[txnIndex].txnDetails.approvals
             );
-        else if (tokenTxns[_txnIndex].txnDetails.executed)
+        else if (s_tokenTxns[txnIndex].txnDetails.executed)
             revert MultiSigWallet__TxnAlreadyExecuted();
 
-        if (tokenTxns[_txnIndex].action == TxnAction.Transfer) {
+        if (s_tokenTxns[txnIndex].action == TxnAction.Transfer) {
             uint256 tokenBalance = IERC20(
-                tokenTxns[_txnIndex].tokenContractAddress
+                s_tokenTxns[txnIndex].tokenContractAddress
             ).balanceOf(address(this));
-            if (tokenBalance < tokenTxns[_txnIndex].amount)
+            if (tokenBalance < s_tokenTxns[txnIndex].amount)
                 revert MultiSigWallet__NotEnoughTokens(tokenBalance);
 
-            tokenTxns[_txnIndex].txnDetails.executed = true;
+            s_tokenTxns[txnIndex].txnDetails.executed = true;
 
-            IERC20(tokenTxns[_txnIndex].tokenContractAddress).transfer(
-                tokenTxns[_txnIndex].to,
-                tokenTxns[_txnIndex].amount
+            IERC20(s_tokenTxns[txnIndex].tokenContractAddress).transfer(
+                s_tokenTxns[txnIndex].to,
+                s_tokenTxns[txnIndex].amount
             );
-        } else if (tokenTxns[_txnIndex].action == TxnAction.TransferFrom) {
+        } else if (s_tokenTxns[txnIndex].action == TxnAction.TransferFrom) {
             uint256 allowance = IERC20(
-                tokenTxns[_txnIndex].tokenContractAddress
-            ).allowance(tokenTxns[_txnIndex].allowanceFrom, address(this));
-            if (allowance < tokenTxns[_txnIndex].amount)
+                s_tokenTxns[txnIndex].tokenContractAddress
+            ).allowance(s_tokenTxns[txnIndex].allowanceProvider, address(this));
+            if (allowance < s_tokenTxns[txnIndex].amount)
                 revert MultiSigWallet__NotEnoughAllowance(allowance);
 
-            tokenTxns[_txnIndex].txnDetails.executed = true;
+            s_tokenTxns[txnIndex].txnDetails.executed = true;
 
-            IERC20(tokenTxns[_txnIndex].tokenContractAddress).transferFrom(
-                tokenTxns[_txnIndex].allowanceFrom,
-                tokenTxns[_txnIndex].to,
-                tokenTxns[_txnIndex].amount
+            IERC20(s_tokenTxns[txnIndex].tokenContractAddress).transferFrom(
+                s_tokenTxns[txnIndex].allowanceProvider,
+                s_tokenTxns[txnIndex].to,
+                s_tokenTxns[txnIndex].amount
             );
-        } else if (tokenTxns[_txnIndex].action == TxnAction.Approve) {
+        } else if (s_tokenTxns[txnIndex].action == TxnAction.Approve) {
             uint256 tokenBalance = IERC20(
-                tokenTxns[_txnIndex].tokenContractAddress
+                s_tokenTxns[txnIndex].tokenContractAddress
             ).balanceOf(address(this));
-            if (tokenBalance < tokenTxns[_txnIndex].amount)
+            if (tokenBalance < s_tokenTxns[txnIndex].amount)
                 revert MultiSigWallet__NotEnoughTokens(tokenBalance);
 
-            tokenTxns[_txnIndex].txnDetails.executed = true;
+            s_tokenTxns[txnIndex].txnDetails.executed = true;
 
-            IERC20(tokenTxns[_txnIndex].tokenContractAddress).approve(
-                tokenTxns[_txnIndex].to,
-                tokenTxns[_txnIndex].amount
+            IERC20(s_tokenTxns[txnIndex].tokenContractAddress).approve(
+                s_tokenTxns[txnIndex].to,
+                s_tokenTxns[txnIndex].amount
             );
         }
     }
 
-    function executeNftTxn(uint256 _txnIndex) internal {
-        if (nftTxns[_txnIndex].txnDetails.approvals < requiredApprovals)
+    /**
+     * @notice Executes NFT transactions if they have enough approvals, and if they haven't been executed before.
+     * @param txnIndex The array index where the transaction request details have been stored.
+     */
+    function executeNftTxn(uint256 txnIndex) internal {
+        if (s_nftTxns[txnIndex].txnDetails.approvals < s_requiredApprovals)
             revert MultiSigWallet__NotEnoughApprovalsGiven(
-                nftTxns[_txnIndex].txnDetails.approvals
+                s_nftTxns[txnIndex].txnDetails.approvals
             );
-        else if (nftTxns[_txnIndex].txnDetails.executed)
+        else if (s_nftTxns[txnIndex].txnDetails.executed)
             revert MultiSigWallet__TxnAlreadyExecuted();
 
-        if (nftTxns[_txnIndex].action == TxnAction.Transfer) {
-            address ownerOfNft = IERC721(nftTxns[_txnIndex].nftContractAddress)
-                .ownerOf(nftTxns[_txnIndex].tokenId);
+        if (s_nftTxns[txnIndex].action == TxnAction.Transfer) {
+            address ownerOfNft = IERC721(s_nftTxns[txnIndex].nftContractAddress)
+                .ownerOf(s_nftTxns[txnIndex].tokenId);
             if (ownerOfNft != address(this))
                 revert MultiSigWallet__TokenIdNotOwned();
 
-            nftTxns[_txnIndex].txnDetails.executed = true;
+            s_nftTxns[txnIndex].txnDetails.executed = true;
 
-            IERC721(nftTxns[_txnIndex].nftContractAddress).safeTransferFrom(
+            IERC721(s_nftTxns[txnIndex].nftContractAddress).safeTransferFrom(
                 address(this),
-                nftTxns[_txnIndex].to,
-                nftTxns[_txnIndex].tokenId
+                s_nftTxns[txnIndex].to,
+                s_nftTxns[txnIndex].tokenId
             );
-        } else if (nftTxns[_txnIndex].action == TxnAction.TransferFrom) {
-            address approvedFor = IERC721(nftTxns[_txnIndex].nftContractAddress)
-                .getApproved(nftTxns[_txnIndex].tokenId);
+        } else if (s_nftTxns[txnIndex].action == TxnAction.TransferFrom) {
+            address approvedFor = IERC721(
+                s_nftTxns[txnIndex].nftContractAddress
+            ).getApproved(s_nftTxns[txnIndex].tokenId);
             if (approvedFor != address(this))
                 revert MultiSigWallet__NftNotApproved();
 
-            nftTxns[_txnIndex].txnDetails.executed = true;
+            s_nftTxns[txnIndex].txnDetails.executed = true;
 
-            IERC721(nftTxns[_txnIndex].nftContractAddress).safeTransferFrom(
-                nftTxns[_txnIndex].allowanceFrom,
-                nftTxns[_txnIndex].to,
-                nftTxns[_txnIndex].tokenId
+            IERC721(s_nftTxns[txnIndex].nftContractAddress).safeTransferFrom(
+                s_nftTxns[txnIndex].allowanceProvider,
+                s_nftTxns[txnIndex].to,
+                s_nftTxns[txnIndex].tokenId
             );
-        } else if (nftTxns[_txnIndex].action == TxnAction.Approve) {
-            address nftOwner = IERC721(nftTxns[_txnIndex].nftContractAddress)
-                .ownerOf(nftTxns[_txnIndex].tokenId);
+        } else if (s_nftTxns[txnIndex].action == TxnAction.Approve) {
+            address nftOwner = IERC721(s_nftTxns[txnIndex].nftContractAddress)
+                .ownerOf(s_nftTxns[txnIndex].tokenId);
             if (nftOwner != address(this))
                 revert MultiSigWallet__NotOwnerOfNft(
-                    nftTxns[_txnIndex].tokenId
+                    s_nftTxns[txnIndex].tokenId
                 );
 
-            nftTxns[_txnIndex].txnDetails.executed = true;
+            s_nftTxns[txnIndex].txnDetails.executed = true;
 
-            IERC721(nftTxns[_txnIndex].nftContractAddress).approve(
-                nftTxns[_txnIndex].to,
-                nftTxns[_txnIndex].tokenId
+            IERC721(s_nftTxns[txnIndex].nftContractAddress).approve(
+                s_nftTxns[txnIndex].to,
+                s_nftTxns[txnIndex].tokenId
             );
         }
     }
