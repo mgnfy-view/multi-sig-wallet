@@ -404,6 +404,43 @@ contract MultiSigWallet is IERC721Receiver {
     }
 
     /**
+     * @notice Returns the amount of ETH held by this wallet.
+     */
+    function getWalletEthBalance() external view returns (uint256) {
+        return address(this).balance;
+    }
+
+    /**
+     * @notice Returns the number of NFT tokens held by this wallet.
+     */
+    function getWalletNftBalance(
+        address nftContractAddress
+    ) external view returns (uint256) {
+        return IERC721(nftContractAddress).balanceOf(address(this));
+    }
+
+    /**
+     * @notice Checks if the NFT tokenId is held by this wallet.
+     */
+    function isOwnerOfNft(
+        uint256 tokenId,
+        address nftContractAddress
+    ) external view returns (bool) {
+        if (IERC721(nftContractAddress).ownerOf(tokenId) != address(this))
+            return false;
+        return true;
+    }
+
+    /**
+     * @notice Returns the amount of tokens held by this wallet.
+     */
+    function getWalletTokenBalance(
+        address tokenContractAddress
+    ) external view returns (uint256) {
+        return IERC20(tokenContractAddress).balanceOf(address(this));
+    }
+
+    /**
      * @notice Returns the total number of ETH transactions issued.
      */
     function getEthTxnCount() external view returns (uint256) {
