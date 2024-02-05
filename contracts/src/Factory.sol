@@ -44,7 +44,8 @@ contract Factory {
 
         emit WalletDeployed(address(multiSigWallet));
 
-        for (uint256 count = 0; count < owners.length; count++) {
+        uint256 numberOfOwners = owners.length;
+        for (uint256 count = 0; count < numberOfOwners; ++count) {
             s_ownersAndWallets[owners[count]] = address(multiSigWallet);
         }
 
