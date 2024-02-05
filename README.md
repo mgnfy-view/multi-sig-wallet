@@ -64,7 +64,7 @@ To get a full list of multi-sig wallet functions and their descriptions, head ov
 
 Additionally, you can view the most recent deployment of an example wallet contract [here](https://sepolia.etherscan.io/address/0xCdec20F79bd58A9A30870f632e3F928717cffa95).
 
-P.S: This project served as my submission for the python project for semester four of my Bachelor's in Computer Engineering. While everyone was leaning towards web development with Flask or Django, I decided to do something a bit unique.
+P.S.: This project served as my submission for the python project for semester four of my Bachelor's in Computer Engineering. While everyone was leaning towards web development with Flask or Django, I decided to do something a bit unique.
 
 ### Built With
 
@@ -80,7 +80,7 @@ P.S: This project served as my submission for the python project for semester fo
 
 ### Prerequisites
 
-Make sure you have node.js, python3, pip3, python3-venv, and git installed and configured on your system. Also, you need to have a bunch of MetaMask accounts, with atleast one of them (the deployer) having about 2 ETH. If you are using the Sepolia testnet, you can get Sepolia testnet ETH from [Alchemy faucet](https://sepoliafaucet.com/).
+Make sure you have node.js, python3, pip3, python3-venv, and git installed and configured on your system. Also, you need to have a bunch of MetaMask accounts, with atleast one of them (the deployer) having about 1 ETH. If you are using the Sepolia testnet, you can get Sepolia testnet ETH from the [Alchemy faucet](https://sepoliafaucet.com/).
 
 ### Installation
 
@@ -122,15 +122,15 @@ You need to bring your Metamask accounts into ape. One of these accounts will be
 ```shell
 ape accounts import <ALIAS>
 ```
-Answer the prompts and your accounts will be registered with ape. You will need to provide an alias for each account, and a passphrase. Don't forget these! Ape will ask you for the passphrase to sign transacions.
+Answer the prompts and your accounts will be registered with ape. You will need to provide an alias for each account, and a passphrase. Don't forget these! Ape will ask you for the passphrase to sign transactions.
 
 If you would like to deploy to the Sepolia testnet, you'll need to get your api key from [Alchemy](https://www.alchemy.com/), and set it as an environment variable
 
 ```shell
-export WEB3_ALCHEMY_PROJECT_ID=<YOUR_API_KEY>
+export WEB3_ALCHEMY_API_KEY=<YOUR_API_KEY>
 ```
 
-Additionally, you can get an api key from [Etherscan](https://docs.etherscan.io/getting-started/creating-an-account) to publish and verify your contracts on Etherscan. Once you have the api key, set it as an environment variable
+Additionally, you can get an api key from [Etherscan](https://docs.etherscan.io/getting-started/creating-an-account) to publish and verify your contracts. Once you have the api key, set it as an environment variable
 
 ```shell
 export ETHERSCAN_API_KEY=<YOUR_API_KEY>
@@ -169,18 +169,18 @@ This will prompt you to sign the transaction by entering your passphrase. Wait f
 
 And there you have it, your very own multi-sig wallet!
 
-You can go to Etherscan, paste in your wallet's address, connect your Metamask account (which is one of the wallet owners), and start issuing, approving, and executing trnasactions!
+You can go to Etherscan, paste in your wallet's address, connect your Metamask account (which is one of the wallet owners), and start issuing, approving, and executing transactions!
 
 
 <!-- ROADMAP -->
 
 ## Roadmap
 
-- [x] Write the multi-sig wallet smart contract
-- [x] Write the deployment script
+- [x] Write the multi-sig wallet and factory smart contracts
+- [x] Write deployment scripts
 - [x] Conduct unit testing
 - [x] Perform gas optimizations
-- [x] Deploy the wallet on the Sepolia testnet
+- [x] Deploy the wallet on Sepolia testnet
 - [x] Write Natspec documentation and generate docs
 - [x] Write a good README.md
 
