@@ -62,7 +62,7 @@ The wallet owners and the minimum number of approvals required for transaction a
 
 To get a full list of multi-sig wallet functions and their descriptions, head over to `./docs/index.html`. Open the file in a web browser to view the documentation.
 
-Additionally, you can view the most recent deployment of the contract [here]().
+Additionally, you can view the most recent deployment of an example wallet contract [here](https://sepolia.etherscan.io/address/0x824B0fa13Aa059EF7D3e7176665B2f3AD7d11A58).
 
 P.S: This project served as my submission for the python project for semester four of my Bachelor's in Computer Engineering. While everyone was leaning towards web development with Flask or Django, I decided to do something a bit unique.
 
@@ -179,8 +179,8 @@ You can go to Etherscan, paste in your wallet's address, connect your Metamask a
 - [x] Write the multi-sig wallet smart contract
 - [x] Write the deployment script
 - [x] Conduct unit testing
-- [ ] Perform gas optimizations
-- [ ] Deploy the wallet on the Sepolia testnet
+- [x] Perform gas optimizations
+- [x] Deploy the wallet on the Sepolia testnet
 - [x] Write Natspec documentation and generate docs
 - [x] Write a good README.md
 
