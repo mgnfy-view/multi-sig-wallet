@@ -109,6 +109,7 @@ contract MultiSigWallet is IERC721Receiver {
     error MultiSigWallet__TokenIdNotOwned();
     error MultiSigWallet__NftNotApproved();
     error MultiSigWallet__NotOwnerOfNft(uint256 tokenId);
+    error MultiSigWallet__TransactionFailed();
 
     modifier onlyOneOfTheOwners() {
         if (!s_owners[msg.sender]) revert MultiSigWallet__NotOneOfTheOwners();
@@ -608,10 +609,11 @@ contract MultiSigWallet is IERC721Receiver {
 
             s_tokenTxns[txnIndex].txnDetails.executed = true;
 
-            IERC20(tokenTxn.tokenContractAddress).transfer(
+            bool success = IERC20(tokenTxn.tokenContractAddress).transfer(
                 tokenTxn.to,
                 tokenTxn.amount
             );
+            if (!success) revert MultiSigWallet__TransactionFailed();
         } else if (tokenTxn.action == TxnAction.TransferFrom) {
             uint256 allowance = IERC20(tokenTxn.tokenContractAddress).allowance(
                 tokenTxn.allowanceProvider,
@@ -622,11 +624,12 @@ contract MultiSigWallet is IERC721Receiver {
 
             s_tokenTxns[txnIndex].txnDetails.executed = true;
 
-            IERC20(tokenTxn.tokenContractAddress).transferFrom(
+            bool success = IERC20(tokenTxn.tokenContractAddress).transferFrom(
                 tokenTxn.allowanceProvider,
                 tokenTxn.to,
                 tokenTxn.amount
             );
+            if (!success) revert MultiSigWallet__TransactionFailed();
         } else if (tokenTxn.action == TxnAction.Approve) {
             uint256 tokenBalance = IERC20(tokenTxn.tokenContractAddress)
                 .balanceOf(address(this));
@@ -635,10 +638,11 @@ contract MultiSigWallet is IERC721Receiver {
 
             s_tokenTxns[txnIndex].txnDetails.executed = true;
 
-            IERC20(tokenTxn.tokenContractAddress).approve(
+            bool success = IERC20(tokenTxn.tokenContractAddress).approve(
                 tokenTxn.to,
                 tokenTxn.amount
             );
+            if (!success) revert MultiSigWallet__TransactionFailed();
         }
     }
 
