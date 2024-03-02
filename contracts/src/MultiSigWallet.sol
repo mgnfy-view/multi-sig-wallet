@@ -70,7 +70,7 @@ contract MultiSigWallet is IERC721Receiver {
      * @notice Emitted each time the wallet receives ETH.
      * @param amount The amount of ETH received.
      */
-    event ETHReceived(uint256 amount);
+    event ETHReceived(uint256 indexed amount);
 
     /**
      * @notice Emitted each time a new transaction is issued by one of the owners.
@@ -78,7 +78,11 @@ contract MultiSigWallet is IERC721Receiver {
      * @param txnIndex The array index at which the transaction request details are stored for the given transaction type.
      * @param by The address of the owner who issued the transaction.
      */
-    event TxnIssued(TxnType txnType, uint256 txnIndex, address by);
+    event TxnIssued(
+        TxnType indexed txnType,
+        uint256 indexed txnIndex,
+        address indexed by
+    );
 
     /**
      * @notice Emitted each time a transaction is approved by one of the owners.
@@ -86,7 +90,11 @@ contract MultiSigWallet is IERC721Receiver {
      * @param txnIndex The array index at which the transaction request details are stored for the given transaction type.
      * @param by The address of the owner who issued the transaction.
      */
-    event TxnApproved(TxnType txnType, uint256 txnIndex, address by);
+    event TxnApproved(
+        TxnType indexed txnType,
+        uint256 indexed txnIndex,
+        address indexed by
+    );
 
     /**
      * @notice Emitted each time a transaction is executed by one of the owners.
@@ -94,7 +102,11 @@ contract MultiSigWallet is IERC721Receiver {
      * @param txnIndex The array index at which the transaction request details are stored for the given transaction type.
      * @param by The address of the owner who issued the transaction.
      */
-    event TxnExecuted(TxnType txnType, uint256 txnIndex, address by);
+    event TxnExecuted(
+        TxnType indexed txnType,
+        uint256 indexed txnIndex,
+        address indexed by
+    );
 
     error MultiSigWallet__NotOneOfTheOwners();
     error MultiSigWallet__InvalidIndex();
@@ -208,8 +220,6 @@ contract MultiSigWallet is IERC721Receiver {
             address(0),
             tokenContractAddress
         );
-
-        emit TxnIssued(TxnType.Token, s_tokenTxnCount - 1, msg.sender);
     }
 
     /**
@@ -232,8 +242,6 @@ contract MultiSigWallet is IERC721Receiver {
             allowanceProvider,
             tokenContractAddress
         );
-
-        emit TxnIssued(TxnType.Token, s_tokenTxnCount - 1, msg.sender);
     }
 
     /**
@@ -254,8 +262,6 @@ contract MultiSigWallet is IERC721Receiver {
             address(0),
             tokenContractAddress
         );
-
-        emit TxnIssued(TxnType.Token, s_tokenTxnCount - 1, msg.sender);
     }
 
     /**
@@ -276,8 +282,6 @@ contract MultiSigWallet is IERC721Receiver {
             address(0),
             nftContractAddress
         );
-
-        emit TxnIssued(TxnType.NFT, s_nftTxnCount - 1, msg.sender);
     }
 
     /**
@@ -300,8 +304,6 @@ contract MultiSigWallet is IERC721Receiver {
             allowanceProvider,
             nftContractAddress
         );
-
-        emit TxnIssued(TxnType.NFT, s_nftTxnCount - 1, msg.sender);
     }
 
     /**
@@ -322,8 +324,6 @@ contract MultiSigWallet is IERC721Receiver {
             address(0),
             nftContractAddress
         );
-
-        emit TxnIssued(TxnType.NFT, s_nftTxnCount - 1, msg.sender);
     }
 
     /**
@@ -379,13 +379,10 @@ contract MultiSigWallet is IERC721Receiver {
     ) external onlyOneOfTheOwners onlyValidTxnIndex(txnType, txnIndex) {
         if (txnType == TxnType.ETH) {
             executeEthTxn(txnIndex);
-            emit TxnExecuted(TxnType.ETH, txnIndex, msg.sender);
         } else if (txnType == TxnType.Token) {
             executeTokenTxn(txnIndex);
-            emit TxnExecuted(TxnType.Token, txnIndex, msg.sender);
         } else if (txnType == TxnType.NFT) {
             executeNftTxn(txnIndex);
-            emit TxnExecuted(TxnType.NFT, txnIndex, msg.sender);
         }
     }
 
@@ -533,6 +530,8 @@ contract MultiSigWallet is IERC721Receiver {
             txnDetails: TxnDetails({approvals: 0, executed: false})
         });
         s_tokenTxns.push(newTxn);
+
+        emit TxnIssued(TxnType.Token, s_tokenTxnCount - 1, msg.sender);
     }
 
     /**
@@ -561,6 +560,8 @@ contract MultiSigWallet is IERC721Receiver {
             txnDetails: TxnDetails({approvals: 0, executed: false})
         });
         s_nftTxns.push(newTxn);
+
+        emit TxnIssued(TxnType.NFT, s_nftTxnCount - 1, msg.sender);
     }
 
     /**
@@ -581,6 +582,8 @@ contract MultiSigWallet is IERC721Receiver {
 
         s_ethTxns[txnIndex].txnDetails.executed = true;
 
+        emit TxnExecuted(TxnType.ETH, txnIndex, msg.sender);
+
         (bool success, ) = ethTxn.to.call{value: s_ethTxns[txnIndex].amount}(
             ""
         );
@@ -593,6 +596,8 @@ contract MultiSigWallet is IERC721Receiver {
      */
     function executeTokenTxn(uint256 txnIndex) internal {
         TokenTxn memory tokenTxn = s_tokenTxns[txnIndex];
+
+        emit TxnExecuted(TxnType.Token, txnIndex, msg.sender);
 
         if (tokenTxn.txnDetails.approvals < i_requiredApprovals)
             revert MultiSigWallet__NotEnoughApprovalsGiven(
@@ -652,6 +657,8 @@ contract MultiSigWallet is IERC721Receiver {
      */
     function executeNftTxn(uint256 txnIndex) internal {
         NftTxn memory nftTxn = s_nftTxns[txnIndex];
+
+        emit TxnExecuted(TxnType.NFT, txnIndex, msg.sender);
 
         if (nftTxn.txnDetails.approvals < i_requiredApprovals)
             revert MultiSigWallet__NotEnoughApprovalsGiven(
