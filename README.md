@@ -87,7 +87,7 @@ Make sure you have node.js, python3, pip3, python3-venv, and git installed and c
 Clone this repository
 
 ```shell
-git clone https://github.com/Sahil-Gujrati/multi-sig-wallet.git
+git clone https://github.com/mgnfy-view/multi-sig-wallet.git
 ```
 
 Cd into the project folder and activate the virtual environment
