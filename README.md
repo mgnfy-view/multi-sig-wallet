@@ -64,7 +64,6 @@ To get a full list of multi-sig wallet functions and their descriptions, head ov
 
 Additionally, you can view the most recent deployment of an example wallet contract [here](https://sepolia.etherscan.io/address/0xCdec20F79bd58A9A30870f632e3F928717cffa95).
 
-P.S.: This project served as my submission for the python project for semester four of my Bachelor's in Computer Engineering. While everyone was leaning towards web development with Flask or Django, I decided to do something a bit unique.
 
 ### Built With
 
