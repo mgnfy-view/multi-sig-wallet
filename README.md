@@ -202,11 +202,9 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 <!-- CONTACT -->
 
-## Contact
+## Reach Out
 
-Sahil Gujrati - [@twitter_handle](https://twitter.com/Sahil__Gujrati) - sahilgujrati12@gmail.com
-
-Project Link: [https://github.com/Sahil-Gujrati/multi-sig-wallet](https://github.com/Sahil-Gujrati/multi-sig-wallet)
+[Linktree](https://linktr.ee/mgnfy.view) - a gateway to my socials.
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
