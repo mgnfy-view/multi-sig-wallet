@@ -202,9 +202,11 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 <!-- CONTACT -->
 
-## Reach Out
+### Reach Out
 
-[Linktree](https://linktr.ee/mgnfy.view) - a gateway to my socials.
+Here's a gateway to all my socials, don't forget to hit me up!
+
+[![Linktree](https://img.shields.io/badge/linktree-1de9b6?style=for-the-badge&logo=linktree&logoColor=white)](https://linktr.ee/mgnfy.view)
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
